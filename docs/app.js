@@ -23,7 +23,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Initialization
     if (!sheetId) {
         // Show demo data so the screen isn't empty behind the modal
-        updateDisplay("1", "1", "Demo Mode");
+        updateDisplay("--", "--", "Setup Required");
         showConfig();
     } else {
         startPolling();

@@ -93,6 +93,13 @@ You can also add a custom name to the top of the display by adding `&meetName=Yo
 Example:
 `https://.../?sheetId=...&meetName=Summer+Championships`
 
+## 4. URL Parameter Reference
+
+| Parameter | Required | Description | Example |
+| :--- | :--- | :--- | :--- |
+| `sheetId` | **Yes** | The ID of your Google Sheet. Found in the sheet URL. | `1BxiMw...` |
+| `meetName` | No | Custom title displayed at the top of the screen. | `Summer+Championships` |
+
 # Verification Script
 
 A Python script is provided to verify the end-to-end functionality of the Google Sheets integration. This script simulates the publishing of event data and then verifies that the data appears on the public spreadsheet.
