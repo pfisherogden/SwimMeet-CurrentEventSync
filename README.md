@@ -86,6 +86,13 @@ Once configured, the URL in your browser address bar will update to include the 
 
 **Copy this full URL** and turn it into a QR code. This is the link you share with parents. They will not need to configure anything—it will just work!
 
+## 3. (Optional) Custom Meet Name
+
+You can also add a custom name to the top of the display by adding `&meetName=Your+Meet+Name` to the end of the URL.
+
+Example:
+`https://.../?sheetId=...&meetName=Summer+Championships`
+
 # Verification Script
 
 A Python script is provided to verify the end-to-end functionality of the Google Sheets integration. This script simulates the publishing of event data and then verifies that the data appears on the public spreadsheet.

@@ -1,17 +1,25 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Swim Meet Live</title>
     <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
 
     <div id="app-container" class="container">
         <!-- Header / Status Bar -->
         <header class="status-bar">
+            <!-- Left: Connection Status -->
             <span id="connection-status" class="status-indicator">Connecting...</span>
+
+            <!-- Center: Meet Name (New) -->
+            <span id="meet-name-display" class="meet-name"></span>
+
+            <!-- Right: Last Updated -->
             <span id="last-updated" class="time-stamp">--:--:--</span>
         </header>
 
@@ -53,4 +61,5 @@
 
     <script src="app.js"></script>
 </body>
+
 </html>

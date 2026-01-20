@@ -14,6 +14,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Check URL params first, then localStorage
     const urlParams = new URLSearchParams(window.location.search);
     let sheetId = urlParams.get('sheetId') || localStorage.getItem('swimMeetSheetId');
+    const meetName = urlParams.get('meetName'); // No fallback here, handled in display
 
     // Polling Interval (ms)
     const POLL_INTERVAL = 10000;
@@ -33,8 +34,15 @@ document.addEventListener('DOMContentLoaded', () => {
     function startPolling() {
         if (!sheetId) return;
 
-        statusIndicator.textContent = "Live";
+        if (!sheetId) return;
+
+        // Don't show "Live" in status indicator, show name in center
+        statusIndicator.textContent = "Connecting...";
         statusIndicator.style.color = "black";
+
+        // Set header title
+        const meetNameDisplay = document.getElementById('meet-name-display');
+        meetNameDisplay.textContent = meetName || "Live";
 
         // Initial Fetch
         fetchData();
@@ -60,7 +68,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const text = await response.text();
             parseCSV(text);
 
-            statusIndicator.textContent = "Live";
+            statusIndicator.textContent = ""; // Clear status when live (title shows "Live")
             statusIndicator.style.opacity = "1";
 
         } catch (error) {
@@ -110,12 +118,12 @@ document.addEventListener('DOMContentLoaded', () => {
             try {
                 const date = new Date(time);
                 if (!isNaN(date.getTime())) {
-                    lastUpdatedDisplay.textContent = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                    lastUpdatedDisplay.textContent = "Last Updated: " + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
                 } else {
-                    lastUpdatedDisplay.textContent = time;
+                    lastUpdatedDisplay.textContent = "Last Updated: " + time;
                 }
             } catch (e) {
-                lastUpdatedDisplay.textContent = time;
+                lastUpdatedDisplay.textContent = "Last Updated: " + time;
             }
         }
     }
