@@ -62,3 +62,38 @@ This guide will help you create a publicly viewable Google Sheet and a simple we
 
 Your Google Sheet is now ready to receive data\!
 
+# Verification Script
+
+A Python script is provided to verify the end-to-end functionality of the Google Sheets integration. This script simulates the publishing of event data and then verifies that the data appears on the public spreadsheet.
+
+## Setup
+
+1.  Navigate to the `tests/` directory.
+2.  Create or edit the `test_settings.json` file (this file is ignored by git to protect your URLs).
+3.  Add your Web App URL and Spreadsheet URL:
+
+    ```json
+    {
+      "G_WEB_APP_URL": "https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec",
+      "G_SHEET_URL": "https://docs.google.com/spreadsheets/d/YOUR_SHEET_ID/edit"
+    }
+    ```
+
+## Running the Test
+
+The script is managed using `uv` to handle dependencies (`requests`).
+
+Run the following command from the root of the repository:
+
+```powershell
+uv run tests/verify_endpoint.py
+```
+
+## How it Works
+
+1.  The script posts simulated data ("Test Event X", "Heat X") to the `G_WEB_APP_URL`.
+2.  It measures the time taken for the POST request.
+3.  It waits for a dynamic period (based on the POST latency) to allow the data to propagate.
+4.  It fetches the "Export to CSV" version of your Google Sheet (`G_SHEET_URL`).
+5.  It verifies that Row 2 of the spreadsheet matches the data that was just posted.
+
