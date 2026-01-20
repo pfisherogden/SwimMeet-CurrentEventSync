@@ -1,2 +1,4 @@
 settings.txt
 .clasp.json
+
+tests/test_settings.json
