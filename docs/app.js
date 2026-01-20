@@ -19,6 +19,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Polling Interval (ms)
     const POLL_INTERVAL = 10000;
     let pollIntervalId;
+    let qrcodeObj = null;
 
     // Initialization
     if (!sheetId) {
@@ -28,6 +29,9 @@ document.addEventListener('DOMContentLoaded', () => {
     } else {
         startPolling();
     }
+
+    // Initialize QR Code (initially with current URL)
+    updateQRCode();
 
     // --- Core Logic ---
 
@@ -160,6 +164,38 @@ document.addEventListener('DOMContentLoaded', () => {
 
             hideConfig();
             startPolling();
+            updateQRCode();
         }
     });
+
+    function updateQRCode() {
+        const qrContainer = document.getElementById('qrcode');
+        if (!qrContainer) return;
+
+        // Clear previous
+        qrContainer.innerHTML = "";
+
+        // Calculate appropriate size.
+        // We want it large enough to scan but fitting in the card.
+        // Since the card is flex, we might need to be careful.
+        // Let's pick a reasonable fixed size for the canvas, and let CSS scale it down.
+        // 256 is good quality.
+
+        const currentUrl = window.location.href;
+
+        try {
+            // Using global QRCode from script
+            qrcodeObj = new QRCode(qrContainer, {
+                text: currentUrl,
+                width: 256,
+                height: 256,
+                colorDark: "#000000",
+                colorLight: "#ffffff",
+                correctLevel: QRCode.CorrectLevel.H
+            });
+            // Note: QRCode.js might throw if container invalid, handled by try-catch
+        } catch (e) {
+            console.error("QR Code Error:", e);
+        }
+    }
 });
