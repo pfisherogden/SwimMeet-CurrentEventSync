@@ -7,8 +7,11 @@
 
 import json
 import time
+import json
+import time
 import requests
 import sys
+import random
 from pathlib import Path
 
 SETTINGS_FILE = "test_settings.json"
@@ -66,7 +69,7 @@ def verify_endpoint():
 
     for i in range(1, 21):
         event_str = f"Test Event {i}"
-        heat_str = f"Heat {i}"
+        heat_str = f"Heat {random.randint(1, 6)}"
         
         payload = {
             "event": event_str,
