@@ -60,7 +60,31 @@ This guide will help you create a publicly viewable Google Sheet and a simple we
    * After deploying, a box will appear with a **Web app URL**. This is the final, most important piece.  
    * Click the **Copy** button. This is the URL you will paste into the AutoHotkey script.
 
-Your Google Sheet is now ready to receive data\!
+Your Google Sheet is now ready to receive data!
+
+# Web App Setup (Scoreboard Display)
+
+This repository includes a High-Visibility Web App designed to be viewed on mobile phones in bright sunlight.
+
+
+
+## 1. Connect Your Sheet
+
+To display your specific meet's data, you need to tell the web app which Google Sheet to look at.
+
+1.  Open your published Google Sheet.
+2.  Copy the **Sheet ID** from the URL. (It's the long string of random characters between `/d/` and `/edit`).
+    *   Example: `https://docs.google.com/spreadsheets/d/`**`1BxiMVs0XRA5nLFdBS5JuQp_5...`**`/edit`
+3.  Open the Web App URL you got from GitHub Pages.
+4.  Click the **Settings Gear (⚙️)** at the bottom or wait for the setup prompt.
+5.  Paste your Sheet ID and click **Save**.
+
+## 2. Share with Parents
+
+Once configured, the URL in your browser address bar will update to include the ID:
+`https://.../?sheetId=YOUR_LONG_ID`
+
+**Copy this full URL** and turn it into a QR code. This is the link you share with parents. They will not need to configure anything—it will just work!
 
 # Verification Script
 

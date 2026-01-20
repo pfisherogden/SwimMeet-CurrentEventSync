@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Swim Meet Live</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <div id="app-container" class="container">
+        <!-- Header / Status Bar -->
+        <header class="status-bar">
+            <span id="connection-status" class="status-indicator">Connecting...</span>
+            <span id="last-updated" class="time-stamp">--:--:--</span>
+        </header>
+
+        <!-- Main Content -->
+        <main class="content">
+            <!-- Event Section -->
+            <section class="card event-card">
+                <div class="label">EVENT</div>
+                <div id="event-display" class="value">--</div>
+            </section>
+
+            <!-- Heat Section -->
+            <section class="card heat-card">
+                <div class="label">HEAT</div>
+                <div id="heat-display" class="value">--</div>
+            </section>
+        </main>
+
+        <!-- Footer / Config -->
+        <footer class="footer">
+            <button id="config-btn" class="icon-btn">⚙️</button>
+        </footer>
+    </div>
+
+    <!-- Configuration Modal (Hidden by default) -->
+    <div id="config-modal" class="modal hidden">
+        <div class="modal-content">
+            <h2>Setup</h2>
+            <p>Enter the Google Sheet ID from your spreadsheet URL.</p>
+            <input type="text" id="sheet-id-input" placeholder="Google Sheet ID">
+            <button id="save-btn" class="primary-btn">Save & Reload</button>
+            <button id="close-modal-btn" class="secondary-btn">Cancel</button>
+            <p class="help-text">
+                Spreadsheet must be "Published to Web".<br>
+                URL format: <code>docs.google.com/spreadsheets/d/<b>SHEET_ID_HERE</b>/edit</code>
+            </p>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
