@@ -91,8 +91,8 @@ body {
     gap: 2vh;
     /* Consistently 100vh minus header/footer approximations. 
        Header is small (~40px), Footer is small (~50px).
-       Let's say 85vh to be safe, or just flex: 1 with a min-height. */
-    min-height: 85vh;
+       Let's say 95vh to be safe, or just flex: 1 with a min-height. */
+    min-height: 95vh;
     flex: 1;
     justify-content: center;
     /* Center cards vertically in the view */
@@ -129,9 +129,15 @@ body {
 
     flex: 0 0 auto;
     /* Don't grow, just be its size */
-    margin-top: 10vh;
+    margin-top: 5vh;
     /* Push well below the fold */
     margin-bottom: 50px;
+    max-width: 250px;
+    /* Limit max width so it's not huge on mobile */
+    align-self: center;
+    /* Center in column */
+    width: 100%;
+    /* Allow it to shrink if needed, but strive for natural size up to max */
 }
 
 #qrcode {
