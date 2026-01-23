@@ -42,7 +42,10 @@
             <!-- QR Code Section -->
             <section class="card qr-card">
                 <div class="label" style="font-size: 1rem; margin-bottom: 5px;">Share</div>
-                <div id="qrcode"></div>
+                <div class="qr-wrapper">
+                    <div id="qrcode"></div>
+                    <img src="logo.png" class="qr-logo" alt="Swim Logo">
+                </div>
             </section>
         </main>
 
@@ -68,6 +71,7 @@
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="mock-data.js"></script>
     <script src="app.js"></script>
 </body>
 

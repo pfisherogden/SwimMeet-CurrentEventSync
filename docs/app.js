@@ -13,16 +13,19 @@ document.addEventListener('DOMContentLoaded', () => {
     // State
     // Check URL params first, then localStorage
     const urlParams = new URLSearchParams(window.location.search);
+    const isOffline = urlParams.get('offline') === 'true' || urlParams.get('demo') === 'true';
     let sheetId = urlParams.get('sheetId') || localStorage.getItem('swimMeetSheetId');
     const meetName = urlParams.get('meetName'); // No fallback here, handled in display
 
     // Polling Interval (ms)
+    // Poll faster in offline mode for demo purposes, or keep same? Keep same for now.
     const POLL_INTERVAL = 10000;
     let pollIntervalId;
     let qrcodeObj = null;
 
     // Initialization
-    if (!sheetId) {
+    // If offline, we don't need a sheet ID to start
+    if (!sheetId && !isOffline) {
         // Show demo data so the screen isn't empty behind the modal
         updateDisplay("--", "--", "Setup Required");
         showConfig();
@@ -36,17 +39,16 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Core Logic ---
 
     function startPolling() {
-        if (!sheetId) return;
-
-        if (!sheetId) return;
+        if (!sheetId && !isOffline) return;
 
         // Don't show "Live" in status indicator, show name in center
-        statusIndicator.textContent = "Connecting...";
-        statusIndicator.style.color = "black";
+        statusIndicator.textContent = isOffline ? "Offline Mode" : "Connecting...";
+        if (isOffline) statusIndicator.style.color = "blue";
+        else statusIndicator.style.color = "black";
 
         // Set header title
         const meetNameDisplay = document.getElementById('meet-name-display');
-        meetNameDisplay.textContent = meetName || "Live";
+        meetNameDisplay.textContent = meetName || (isOffline ? "Offline Demo" : "Live");
 
         // Initial Fetch
         fetchData();
@@ -58,6 +60,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function fetchData() {
         try {
+            if (isOffline) {
+                if (window.MOCK_DATA) {
+                    parseCSV(window.MOCK_DATA);
+                    statusIndicator.textContent = "Offline Mode";
+                    statusIndicator.style.opacity = "1";
+                } else {
+                    console.error("MOCK_DATA not found in window object");
+                }
+                return;
+            }
+
             // Note: cache-busting parameter added to prevent browser caching
             // Using the "gviz" URL which often returns JSON, but we can also use the export=csv format.
             // Let's use the export format as it's cleaner for raw text parsing.
@@ -68,6 +81,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!response.ok) {
                 throw new Error(`HTTP ${response.status}`);
             }
+
 
             const text = await response.text();
             parseCSV(text);
@@ -97,7 +111,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const dataRow = lines[1];
 
         // Regex to handle CSV correctly (ignoring commas inside quotes)
-        const matches = dataRow.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g) || [];
+        // Fixed regex to allow spaces in unquoted fields: removed \s from exclusion class
+        const matches = dataRow.match(/(".*?"|[^",]+)(?=\s*,|\s*$)/g) || [];
         // Fallback for simple splitting if regex fails or data is simple
         const columns = matches.length > 0 ? matches.map(s => s.replace(/^"|"$/g, '')) : dataRow.split(',');
 
