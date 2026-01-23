@@ -2,3 +2,7 @@ settings.txt
 .clasp.json
 
 tests/test_settings.json
+tests/output/
+__pycache__/
+.venv/
+.pytest_cache/
