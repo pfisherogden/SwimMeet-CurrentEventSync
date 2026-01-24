@@ -117,9 +117,16 @@ document.addEventListener('DOMContentLoaded', () => {
         const columns = matches.length > 0 ? matches.map(s => s.replace(/^"|"$/g, '')) : dataRow.split(',');
 
         if (columns.length >= 2) {
-            const eventVal = columns[0].trim();
-            const heatVal = columns[1].trim();
+            let eventVal = columns[0].trim();
+            let heatVal = columns[1].trim();
             const timeVal = columns[2] ? columns[2].trim() : '';
+
+            // Extract last sequence of digits if present (e.g., "Event 99" -> "99")
+            const eventMatch = eventVal.match(/(\d+)$/);
+            if (eventMatch) eventVal = eventMatch[1];
+
+            const heatMatch = heatVal.match(/(\d+)$/);
+            if (heatMatch) heatVal = heatMatch[1];
 
             updateDisplay(eventVal, heatVal, timeVal);
         }
