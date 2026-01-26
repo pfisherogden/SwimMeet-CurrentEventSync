@@ -13,14 +13,14 @@
     <div id="app-container" class="container">
         <!-- Header / Status Bar -->
         <header class="status-bar">
-            <!-- Left: Connection Status -->
-            <span id="connection-status" class="status-indicator">Connecting...</span>
-
             <!-- Center: Meet Name (New) -->
             <span id="meet-name-display" class="meet-name"></span>
 
-            <!-- Right: Last Updated -->
-            <span id="last-updated" class="time-stamp">--:--:--</span>
+            <!-- Right: Last Updated and Connection Status -->
+            <div class="right-header">
+                <span id="last-updated" class="time-stamp">--:--:--</span>
+                <div id="connection-status" class="status-indicator" title="Connecting..."></div>
+            </div>
         </header>
 
         <!-- Main Content -->

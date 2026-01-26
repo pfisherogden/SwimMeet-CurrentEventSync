@@ -72,12 +72,18 @@ body {
     min-height: 100vh;
     /* Ensure container is at least full height */
     padding: 10px;
+    padding-right: 20px;
+    /* Prevent scrollbar from overlapping content */
 }
 
 /* Status Bar */
 .status-bar {
     display: flex;
-    justify-content: space-between;
+    margin-bottom: 0px;
+    /* Reduced margin */
+    position: relative;
+    justify-content: flex-end;
+    /* Align all children to the right (since title is absolute) */
     font-size: 1rem;
     padding: 5px 10px;
     font-family: sans-serif;
@@ -87,29 +93,64 @@ body {
     /* Vertically center */
 }
 
+.right-header {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    z-index: 2;
+    /* Ensure above absolutely positioned title if overlap */
+}
+
 .status-indicator {
-    flex: 1;
-    text-align: left;
-    font-size: 0.8rem;
-    /* Smaller status */
+    width: 15px;
+    height: 15px;
+    border-radius: 50%;
+    background-color: orange;
+    /* Default connecting state */
+    display: inline-block;
+    flex: 0 0 auto;
+    margin-right: 0;
+    transition: background-color 0.3s ease;
+}
+
+.status-connected {
+    background-color: #32CD32;
+    /* Lime Green */
+    box-shadow: 0 0 5px #32CD32;
+    animation: none;
+}
+
+.status-error {
+    background-color: var(--status-error);
+    box-shadow: 0 0 5px var(--status-error);
+    animation: none;
+}
+
+.status-connecting {
+    background-color: orange;
+    animation: pulse 1s infinite;
 }
 
 .meet-name {
-    flex: 2;
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    width: auto;
+    max-width: 60%;
     text-align: center;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
     text-transform: uppercase;
     font-size: clamp(0.8rem, 4vw, 1.2rem);
-    /* Dynamic scaling */
     padding: 0 5px;
+    z-index: 1;
 }
 
 .time-stamp {
-    flex: 1;
     text-align: right;
     font-size: 0.8rem;
+    white-space: nowrap;
 }
 
 /* Main Content Area */
@@ -235,7 +276,15 @@ body {
     border: none;
     font-size: 1.5rem;
     cursor: pointer;
-    opacity: 0.5;
+    opacity: 0.7;
+    /* Increased opacity for better visibility */
+    color: var(--text-color);
+    /* Ensure visible on all backgrounds */
+    transition: opacity 0.2s;
+}
+
+.icon-btn:hover {
+    opacity: 1;
 }
 
 /* Modal */

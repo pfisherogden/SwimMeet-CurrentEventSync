@@ -25,6 +25,8 @@ document.addEventListener('DOMContentLoaded', () => {
     let isDarkMode = localStorage.getItem('swimMeetDarkMode') === 'true';
     let isWakelockEnabled = localStorage.getItem('swimMeetWakelock') === 'true';
     let wakeLockSentinel = null;
+    let lastEvent = null;
+    let lastHeat = null;
 
     // Polling Interval (ms)
     // Poll faster in offline mode for demo purposes, or keep same? Keep same for now.
@@ -74,9 +76,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // Visual indication (though user won't see it until they come back potentially, 
             // but helpful if they have side-by-side windows)
-            statusIndicator.textContent = "Paused (Inactive)";
-            statusIndicator.style.color = "orange";
-            statusIndicator.style.animation = "none";
+            // Visual indication (though user won't see it until they come back potentially, 
+            // but helpful if they have side-by-side windows)
+            // Keep the last known state or show partial dimmed? 
+            // Let's just dim it.
+            statusIndicator.style.opacity = "0.5";
+            statusIndicator.title = "Paused (Inactive)";
         }
     });
 
@@ -86,13 +91,13 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!sheetId && !isOffline) return;
 
         // Don't show "Live" in status indicator, show name in center
-        statusIndicator.textContent = isOffline ? "Offline Mode" : "Connecting...";
-        if (isOffline) statusIndicator.style.color = "blue";
-        else {
-            statusIndicator.style.color = "var(--status-ok)";
-            // Add pulsing animation class to a dot if we had one, or just text.
-            // Let's make the status indicator pulse.
-            statusIndicator.style.animation = "pulse 2s infinite";
+        // Don't show "Live" in status indicator, show name in center
+        statusIndicator.className = "status-indicator status-connecting";
+        statusIndicator.title = isOffline ? "Offline Mode" : "Connecting...";
+
+        if (isOffline) {
+            statusIndicator.classList.remove('status-connecting');
+            statusIndicator.classList.add('status-connected'); // Consider offline as connected/ready
         }
 
         // Set header title
@@ -112,7 +117,8 @@ document.addEventListener('DOMContentLoaded', () => {
             if (isOffline) {
                 if (window.MOCK_DATA) {
                     parseCSV(window.MOCK_DATA);
-                    statusIndicator.textContent = "Offline Mode";
+                    statusIndicator.className = "status-indicator status-connected";
+                    statusIndicator.title = "Offline Mode";
                     statusIndicator.style.opacity = "1";
                 } else {
                     console.error("MOCK_DATA not found in window object");
@@ -135,14 +141,15 @@ document.addEventListener('DOMContentLoaded', () => {
             const text = await response.text();
             parseCSV(text);
 
-            statusIndicator.textContent = ""; // Clear status when live (title shows "Live")
+            statusIndicator.className = "status-indicator status-connected";
+            statusIndicator.title = "Connected";
             statusIndicator.style.opacity = "1";
 
         } catch (error) {
             console.error("Fetch error:", error);
-            statusIndicator.textContent = "OFFLINE";
-            statusIndicator.style.opacity = "0.5";
-            // Optional: flash error color
+            statusIndicator.className = "status-indicator status-error";
+            statusIndicator.title = "Connection Failed";
+            statusIndicator.style.opacity = "1";
         }
     }
 
@@ -183,6 +190,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function updateDisplay(event, heat, time) {
         // Only trigger animation/update if changed can be nice, but simple replacement works.
+        const eventChanged = event !== lastEvent;
+        const heatChanged = heat !== lastHeat;
+
         eventDisplay.textContent = event;
         heatDisplay.textContent = heat;
 
@@ -193,8 +203,15 @@ document.addEventListener('DOMContentLoaded', () => {
             el.classList.add('flash-update');
         };
 
-        flashCallback(eventDisplay.parentElement);
-        flashCallback(heatDisplay.parentElement);
+        if (eventChanged) {
+            flashCallback(eventDisplay.parentElement);
+            lastEvent = event;
+        }
+
+        if (heatChanged) {
+            flashCallback(heatDisplay.parentElement);
+            lastHeat = heat;
+        }
 
         if (time) {
             // Try to make time friendly? Or just raw string.
