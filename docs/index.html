@@ -51,7 +51,9 @@
 
         <!-- Footer / Config -->
         <footer class="footer">
-            <button id="config-btn" class="icon-btn">⚙️</button>
+            <button id="fullscreen-btn" class="icon-btn" title="Toggle Fullscreen">⛶</button>
+            <button id="theme-btn" class="icon-btn" title="Toggle Theme">🌓</button>
+            <button id="config-btn" class="icon-btn" title="Settings">⚙️</button>
         </footer>
     </div>
 
@@ -61,6 +63,12 @@
             <h2>Setup</h2>
             <p>Enter the Google Sheet ID from your spreadsheet URL.</p>
             <input type="text" id="sheet-id-input" placeholder="Google Sheet ID">
+
+            <div class="checkbox-wrapper">
+                <input type="checkbox" id="wakelock-checkbox">
+                <label for="wakelock-checkbox">Keep Screen On (Wakelock)</label>
+            </div>
+
             <button id="save-btn" class="primary-btn">Save & Reload</button>
             <button id="close-modal-btn" class="secondary-btn">Cancel</button>
             <p class="help-text">

@@ -5,17 +5,26 @@ document.addEventListener('DOMContentLoaded', () => {
     const lastUpdatedDisplay = document.getElementById('last-updated');
     const statusIndicator = document.getElementById('connection-status');
     const configBtn = document.getElementById('config-btn');
+    const fullscreenBtn = document.getElementById('fullscreen-btn');
+    const themeBtn = document.getElementById('theme-btn');
     const configModal = document.getElementById('config-modal');
     const closeModalBtn = document.getElementById('close-modal-btn');
     const saveBtn = document.getElementById('save-btn');
     const sheetIdInput = document.getElementById('sheet-id-input');
+    const wakelockCheckbox = document.getElementById('wakelock-checkbox');
 
     // State
     // Check URL params first, then localStorage
     const urlParams = new URLSearchParams(window.location.search);
+    const isTestMode = urlParams.get('test') === 'true';
     const isOffline = urlParams.get('offline') === 'true' || urlParams.get('demo') === 'true';
     let sheetId = urlParams.get('sheetId') || localStorage.getItem('swimMeetSheetId');
     const meetName = urlParams.get('meetName'); // No fallback here, handled in display
+
+    // UX State
+    let isDarkMode = localStorage.getItem('swimMeetDarkMode') === 'true';
+    let isWakelockEnabled = localStorage.getItem('swimMeetWakelock') === 'true';
+    let wakeLockSentinel = null;
 
     // Polling Interval (ms)
     // Poll faster in offline mode for demo purposes, or keep same? Keep same for now.
@@ -36,6 +45,41 @@ document.addEventListener('DOMContentLoaded', () => {
     // Initialize QR Code (initially with current URL)
     updateQRCode();
 
+    // Initialize Theme
+    if (isDarkMode) {
+        document.body.classList.add('dark-mode');
+    }
+
+    // Initialize Wakelock (if enabled)
+    if (isWakelockEnabled) {
+        requestWakeLock();
+    }
+
+    // Handle Visibility Change for Wakelock Re-acquisition
+    // Handle Visibility Change for Wakelock Re-acquisition and Polling Optimization
+    document.addEventListener('visibilitychange', async () => {
+        if (document.visibilityState === 'visible') {
+            // Resume polling immediately
+            console.log('Tab visible: Resuming polling');
+            startPolling();
+
+            // Re-acquire Wake Lock if it was active
+            if (wakeLockSentinel !== null) {
+                await requestWakeLock();
+            }
+        } else {
+            // Pause polling to save resources
+            console.log('Tab hidden: Pausing polling');
+            clearInterval(pollIntervalId);
+
+            // Visual indication (though user won't see it until they come back potentially, 
+            // but helpful if they have side-by-side windows)
+            statusIndicator.textContent = "Paused (Inactive)";
+            statusIndicator.style.color = "orange";
+            statusIndicator.style.animation = "none";
+        }
+    });
+
     // --- Core Logic ---
 
     function startPolling() {
@@ -44,7 +88,12 @@ document.addEventListener('DOMContentLoaded', () => {
         // Don't show "Live" in status indicator, show name in center
         statusIndicator.textContent = isOffline ? "Offline Mode" : "Connecting...";
         if (isOffline) statusIndicator.style.color = "blue";
-        else statusIndicator.style.color = "black";
+        else {
+            statusIndicator.style.color = "var(--status-ok)";
+            // Add pulsing animation class to a dot if we had one, or just text.
+            // Let's make the status indicator pulse.
+            statusIndicator.style.animation = "pulse 2s infinite";
+        }
 
         // Set header title
         const meetNameDisplay = document.getElementById('meet-name-display');
@@ -137,6 +186,16 @@ document.addEventListener('DOMContentLoaded', () => {
         eventDisplay.textContent = event;
         heatDisplay.textContent = heat;
 
+        // Flash animation
+        const flashCallback = (el) => {
+            el.classList.remove('flash-update');
+            void el.offsetWidth; // trigger reflow
+            el.classList.add('flash-update');
+        };
+
+        flashCallback(eventDisplay.parentElement);
+        flashCallback(heatDisplay.parentElement);
+
         if (time) {
             // Try to make time friendly? Or just raw string.
             // Raw string is usually full date time. Let's just show time part if possible.
@@ -159,6 +218,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function showConfig() {
         configModal.classList.remove('hidden');
         if (sheetId) sheetIdInput.value = sheetId;
+        wakelockCheckbox.checked = isWakelockEnabled;
     }
 
     function hideConfig() {
@@ -168,8 +228,50 @@ document.addEventListener('DOMContentLoaded', () => {
     configBtn.addEventListener('click', showConfig);
     closeModalBtn.addEventListener('click', hideConfig);
 
+    // Theme Toggle
+    themeBtn.addEventListener('click', toggleTheme);
+
+    function toggleTheme() {
+        isDarkMode = !isDarkMode;
+        document.body.classList.toggle('dark-mode', isDarkMode);
+        localStorage.setItem('swimMeetDarkMode', isDarkMode);
+    }
+
+    // Expose for testing
+    if (isTestMode) {
+        window.swimApp = {
+            updateDisplay: (e, h, t) => updateDisplay(e, h, t),
+            toggleTheme: toggleTheme,
+            element: {
+                event: eventDisplay,
+                heat: heatDisplay
+            }
+        };
+    }
+
+    // Fullscreen Toggle
+    fullscreenBtn.addEventListener('click', () => {
+        if (!document.fullscreenElement) {
+            document.documentElement.requestFullscreen().catch(err => {
+                console.error(`Error attempting to enable fullscreen: ${err.message}`);
+            });
+        } else {
+            document.exitFullscreen();
+        }
+    });
+
     saveBtn.addEventListener('click', () => {
         const inputVal = sheetIdInput.value.trim();
+
+        // Save Wakelock setting
+        const newWakelockState = wakelockCheckbox.checked;
+        if (newWakelockState !== isWakelockEnabled) {
+            isWakelockEnabled = newWakelockState;
+            localStorage.setItem('swimMeetWakelock', isWakelockEnabled);
+            if (isWakelockEnabled) requestWakeLock();
+            else releaseWakeLock();
+        }
+
         if (inputVal) {
             // Extract ID if they pasted a full URL
             // patterns: /d/([a-zA-Z0-9-_]+)/
@@ -218,6 +320,27 @@ document.addEventListener('DOMContentLoaded', () => {
             // Note: QRCode.js might throw if container invalid, handled by try-catch
         } catch (e) {
             console.error("QR Code Error:", e);
+        }
+    }
+    async function requestWakeLock() {
+        if (!isWakelockEnabled) return;
+        try {
+            if ('wakeLock' in navigator) {
+                wakeLockSentinel = await navigator.wakeLock.request('screen');
+                console.log('Wake Lock active');
+                wakeLockSentinel.addEventListener('release', () => {
+                    console.log('Wake Lock released');
+                });
+            }
+        } catch (err) {
+            console.error(`${err.name}, ${err.message}`);
+        }
+    }
+
+    function releaseWakeLock() {
+        if (wakeLockSentinel) {
+            wakeLockSentinel.release();
+            wakeLockSentinel = null;
         }
     }
 });

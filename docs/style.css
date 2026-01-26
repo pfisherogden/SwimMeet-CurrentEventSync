@@ -1,13 +1,51 @@
 :root {
+    /* Light Theme (Default) */
     --bg-color: #FFD700;
-    /* Safety Yellow/Orange */
     --text-color: #000000;
     --card-bg: #FFFFFF;
-    /* High contrast white cards on yellow, or just borderless? */
+    --card-border: #000000;
     --card-bg-transparent: rgba(255, 255, 255, 0.3);
     --font-stack: 'Impact', 'Roboto Black', 'Arial Black', sans-serif;
     --status-error: #ff4444;
     --status-ok: #000000;
+}
+
+/* Dark Theme overrides (Red LED Style) */
+body.dark-mode {
+    --bg-color: #000000;
+    --text-color: #ff3333;
+    --card-bg: #000000;
+    --card-border: #ff3333;
+    --card-bg-transparent: rgba(50, 0, 0, 0.3);
+}
+
+/* Animations */
+@keyframes flash-update {
+    0% {
+        background-color: rgba(255, 255, 255, 0.8);
+    }
+
+    100% {
+        background-color: transparent;
+    }
+}
+
+@keyframes pulse {
+    0% {
+        opacity: 0.5;
+    }
+
+    50% {
+        opacity: 1;
+    }
+
+    100% {
+        opacity: 0.5;
+    }
+}
+
+.flash-update {
+    animation: flash-update 0.5s ease-out;
 }
 
 * {
@@ -101,7 +139,7 @@ body {
     align-items: center;
     justify-content: center;
     text-align: center;
-    border: 4px solid black;
+    border: 4px solid var(--card-border);
     background-color: transparent;
     flex: 1;
     border-radius: 12px;
