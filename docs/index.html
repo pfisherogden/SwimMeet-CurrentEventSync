@@ -68,6 +68,17 @@
                 <input type="checkbox" id="wakelock-checkbox">
                 <label for="wakelock-checkbox">Keep Screen On (Wakelock)</label>
             </div>
+            <div class="checkbox-wrapper">
+                <input type="checkbox" id="auto-theme-checkbox">
+                <label for="auto-theme-checkbox">Auto Dark Mode</label>
+            </div>
+            <div id="auto-theme-config" style="margin-left: 20px; font-size: 0.9rem; margin-bottom: 15px;">
+                <label>Start Hour (0-23): <input type="number" id="auto-theme-start" min="0" max="23"
+                        style="width: 50px; padding: 5px; margin: 0 5px;"></label>
+                <br>
+                <label>End Hour (0-23): <input type="number" id="auto-theme-end" min="0" max="23"
+                        style="width: 50px; padding: 5px; margin: 0 5px;"></label>
+            </div>
 
             <button id="save-btn" class="primary-btn">Save & Reload</button>
             <button id="close-modal-btn" class="secondary-btn">Cancel</button>
