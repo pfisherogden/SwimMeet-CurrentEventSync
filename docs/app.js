@@ -21,7 +21,15 @@ document.addEventListener('DOMContentLoaded', () => {
     // State
     // Check URL params first, then localStorage
     const urlParams = new URLSearchParams(window.location.search);
-    const isTestMode = urlParams.get('test') === 'true';
+
+    // Inject Verifier/Test Harness if requested
+    if (urlParams.get('verifier') === 'true') {
+        const script = document.createElement('script');
+        script.src = "../tests/verifier.js";
+        document.body.appendChild(script);
+    }
+
+    const isTestMode = urlParams.get('test') === 'true' || urlParams.get('verifier') === 'true';
     const isOffline = urlParams.get('offline') === 'true' || urlParams.get('demo') === 'true';
     let sheetId = urlParams.get('sheetId') || localStorage.getItem('swimMeetSheetId');
     const meetName = urlParams.get('meetName'); // No fallback here, handled in display
