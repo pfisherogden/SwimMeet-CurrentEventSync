@@ -11,7 +11,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const closeModalBtn = document.getElementById('close-modal-btn');
     const saveBtn = document.getElementById('save-btn');
     const sheetIdInput = document.getElementById('sheet-id-input');
+
     const wakelockCheckbox = document.getElementById('wakelock-checkbox');
+
+    const autoThemeCheckbox = document.getElementById('auto-theme-checkbox');
+    const autoThemeStartInput = document.getElementById('auto-theme-start');
+    const autoThemeEndInput = document.getElementById('auto-theme-end');
 
     // State
     // Check URL params first, then localStorage
@@ -22,6 +27,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const meetName = urlParams.get('meetName'); // No fallback here, handled in display
 
     // UX State
+    let isAutoThemeEnabled = localStorage.getItem('swimMeetAutoTheme') !== 'false'; // Default to true
+    let autoThemeStart = parseInt(localStorage.getItem('swimMeetAutoThemeStart') || '17', 10);
+    let autoThemeEnd = parseInt(localStorage.getItem('swimMeetAutoThemeEnd') || '7', 10);
     let isDarkMode = localStorage.getItem('swimMeetDarkMode') === 'true';
     let isWakelockEnabled = localStorage.getItem('swimMeetWakelock') === 'true';
     let wakeLockSentinel = null;
@@ -48,7 +56,9 @@ document.addEventListener('DOMContentLoaded', () => {
     updateQRCode();
 
     // Initialize Theme
-    if (isDarkMode) {
+    if (isAutoThemeEnabled) {
+        checkAutoTheme();
+    } else if (isDarkMode) {
         document.body.classList.add('dark-mode');
     }
 
@@ -107,9 +117,11 @@ document.addEventListener('DOMContentLoaded', () => {
         // Initial Fetch
         fetchData();
 
-        // Interval
-        clearInterval(pollIntervalId);
-        pollIntervalId = setInterval(fetchData, POLL_INTERVAL);
+
+        pollIntervalId = setInterval(() => {
+            fetchData();
+            if (isAutoThemeEnabled) checkAutoTheme();
+        }, POLL_INTERVAL);
     }
 
     async function fetchData() {
@@ -236,7 +248,26 @@ document.addEventListener('DOMContentLoaded', () => {
         configModal.classList.remove('hidden');
         if (sheetId) sheetIdInput.value = sheetId;
         wakelockCheckbox.checked = isWakelockEnabled;
+        autoThemeCheckbox.checked = isAutoThemeEnabled;
+        autoThemeStartInput.value = autoThemeStart;
+        autoThemeEndInput.value = autoThemeEnd;
+
+        // Simple toggle for inputs based on checkbox
+        toggleAutoThemeConfig();
     }
+
+    function toggleAutoThemeConfig() {
+        const configDiv = document.getElementById('auto-theme-config');
+        if (autoThemeCheckbox.checked) {
+            configDiv.style.opacity = "1";
+            configDiv.style.pointerEvents = "auto";
+        } else {
+            configDiv.style.opacity = "0.5";
+            configDiv.style.pointerEvents = "none";
+        }
+    }
+
+    autoThemeCheckbox.addEventListener('change', toggleAutoThemeConfig);
 
     function hideConfig() {
         configModal.classList.add('hidden');
@@ -249,9 +280,35 @@ document.addEventListener('DOMContentLoaded', () => {
     themeBtn.addEventListener('click', toggleTheme);
 
     function toggleTheme() {
+        // manual toggle disables auto mode
+        if (isAutoThemeEnabled) {
+            isAutoThemeEnabled = false;
+            localStorage.setItem('swimMeetAutoTheme', 'false');
+        }
+
         isDarkMode = !isDarkMode;
         document.body.classList.toggle('dark-mode', isDarkMode);
         localStorage.setItem('swimMeetDarkMode', isDarkMode);
+    }
+
+    function checkAutoTheme() {
+        const hour = new Date().getHours();
+        let shouldBeDark = false;
+
+        if (autoThemeStart < autoThemeEnd) {
+            // Example: Start 8am, End 5pm (Daytime mode inverted? Or just range)
+            // If range is within same day
+            shouldBeDark = hour >= autoThemeStart && hour < autoThemeEnd;
+        } else {
+            // Example: Start 17 (5pm), End 7 (7am) (Overnight)
+            shouldBeDark = hour >= autoThemeStart || hour < autoThemeEnd;
+        }
+
+        if (isDarkMode !== shouldBeDark) {
+            isDarkMode = shouldBeDark;
+            document.body.classList.toggle('dark-mode', isDarkMode);
+            localStorage.setItem('swimMeetDarkMode', isDarkMode);
+        }
     }
 
     // Expose for testing
@@ -288,6 +345,26 @@ document.addEventListener('DOMContentLoaded', () => {
             if (isWakelockEnabled) requestWakeLock();
             else releaseWakeLock();
         }
+
+        // Save Auto Theme setting
+        const newAutoThemeState = autoThemeCheckbox.checked;
+        if (newAutoThemeState !== isAutoThemeEnabled) {
+            isAutoThemeEnabled = newAutoThemeState;
+            localStorage.setItem('swimMeetAutoTheme', isAutoThemeEnabled);
+        }
+
+        // Save Custom Times
+        const newStart = parseInt(autoThemeStartInput.value, 10);
+        const newEnd = parseInt(autoThemeEndInput.value, 10);
+
+        if (!isNaN(newStart) && !isNaN(newEnd)) {
+            autoThemeStart = newStart;
+            autoThemeEnd = newEnd;
+            localStorage.setItem('swimMeetAutoThemeStart', autoThemeStart);
+            localStorage.setItem('swimMeetAutoThemeEnd', autoThemeEnd);
+        }
+
+        if (isAutoThemeEnabled) checkAutoTheme();
 
         if (inputVal) {
             // Extract ID if they pasted a full URL
