@@ -4,14 +4,13 @@ import path from 'path';
 import { execSync } from 'child_process';
 import readline from 'readline';
 
-// --- AUTHENTICATION CONFIGURATION ---
-// For secure access to Sheets/Drive/Script APIs, you MUST use your own Client ID.
-// Follow docs/AuthSetup.md to create these.
+// --- RESTRICTED AUTHENTICATION CONFIGURATION ---
+// We use .file scoped permissions so the app can ONLY see files it creates.
 const CREDENTIALS_PATH = path.join(process.cwd(), 'credentials.json');
 const TOKEN_PATH = path.join(process.cwd(), 'token.json');
 const SCOPES = [
-  'https://www.googleapis.com/auth/spreadsheets',
-  'https://www.googleapis.com/auth/drive',
+  'https://www.googleapis.com/auth/spreadsheets', // Required to create/edit spreadsheets
+  'https://www.googleapis.com/auth/drive.file',    // ONLY files created or opened by this app
   'https://www.googleapis.com/auth/script.projects',
   'https://www.googleapis.com/auth/script.deployments'
 ];
@@ -19,7 +18,6 @@ const SCOPES = [
 async function getAuth() {
   if (!fs.existsSync(CREDENTIALS_PATH)) {
     console.error('❌ Error: credentials.json not found.');
-    console.log('Please follow the steps in docs/AuthSetup.md to create your own Google Cloud credentials.');
     process.exit(1);
   }
 
@@ -40,13 +38,11 @@ async function getAuth() {
 async function getNewToken(oAuth2Client) {
   const authUrl = oAuth2Client.generateAuthUrl({
     access_type: 'offline',
+    prompt: 'consent', // Force consent to ensure we get a refresh token with new scopes
     scope: SCOPES,
   });
   console.log('🚀 Authorize this app by visiting this url:', authUrl);
-  const rl = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout,
-  });
+  const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
 
   return new Promise((resolve, reject) => {
     rl.question('Enter the code from that page here: ', (code) => {
@@ -55,7 +51,7 @@ async function getNewToken(oAuth2Client) {
         if (err) return reject(err);
         oAuth2Client.setCredentials(token);
         fs.writeFileSync(TOKEN_PATH, JSON.stringify(token));
-        console.log('✅ Token stored to', TOKEN_PATH);
+        console.log('✅ Restricted token stored to', TOKEN_PATH);
         resolve(oAuth2Client);
       });
     });
@@ -138,6 +134,7 @@ async function run() {
     console.log('Spreadsheet ID:', spreadsheet.spreadsheetId);
     console.log('Web App URL:', deployment.entryPoints[0].webApp.url);
     console.log('----------------------');
+    console.log('Note: This app can only see files it created.');
   } catch (error) {
     console.error('❌ Error during setup:', error.message || error);
   }
