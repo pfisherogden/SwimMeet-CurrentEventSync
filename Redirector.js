@@ -55,7 +55,7 @@ function doGet(e) {
               <div class="card">
                 <h2>Ready for the Meet?</h2>
                 <div class="meet-name">${rowMeetName}</div>
-                <a href="${redirectUrl}" class="btn" target="_top">Open Scoreboard</a>
+                <a href="${redirectUrl}" class="btn" target="_top">Open Event Board</a>
                 <p style="font-size: 0.8rem; color: #888; margin-top: 1.5rem;">Redirecting automatically if possible...</p>
               </div>
               <script>
