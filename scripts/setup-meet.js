@@ -1,19 +1,70 @@
-import { execSync } from 'child_process';
 import { google } from 'googleapis';
 import fs from 'fs';
 import path from 'path';
+import { execSync } from 'child_process';
+import readline from 'readline';
 
-async function getAccessToken() {
-  try {
-    return execSync('gcloud auth application-default print-access-token').toString().trim();
-  } catch (e) {
-    console.error('Failed to get access token from gcloud. Run "gcloud auth application-default login" first.');
+// --- AUTHENTICATION CONFIGURATION ---
+// For secure access to Sheets/Drive/Script APIs, you MUST use your own Client ID.
+// Follow docs/AuthSetup.md to create these.
+const CREDENTIALS_PATH = path.join(process.cwd(), 'credentials.json');
+const TOKEN_PATH = path.join(process.cwd(), 'token.json');
+const SCOPES = [
+  'https://www.googleapis.com/auth/spreadsheets',
+  'https://www.googleapis.com/auth/drive',
+  'https://www.googleapis.com/auth/script.projects',
+  'https://www.googleapis.com/auth/script.deployments'
+];
+
+async function getAuth() {
+  if (!fs.existsSync(CREDENTIALS_PATH)) {
+    console.error('❌ Error: credentials.json not found.');
+    console.log('Please follow the steps in docs/AuthSetup.md to create your own Google Cloud credentials.');
     process.exit(1);
   }
+
+  const content = fs.readFileSync(CREDENTIALS_PATH);
+  const credentials = JSON.parse(content);
+  const { client_secret, client_id, redirect_uris } = credentials.installed || credentials.web;
+  const oAuth2Client = new google.auth.OAuth2(client_id, client_secret, redirect_uris[0]);
+
+  if (fs.existsSync(TOKEN_PATH)) {
+    const token = fs.readFileSync(TOKEN_PATH);
+    oAuth2Client.setCredentials(JSON.parse(token));
+    return oAuth2Client;
+  }
+
+  return await getNewToken(oAuth2Client);
+}
+
+async function getNewToken(oAuth2Client) {
+  const authUrl = oAuth2Client.generateAuthUrl({
+    access_type: 'offline',
+    scope: SCOPES,
+  });
+  console.log('🚀 Authorize this app by visiting this url:', authUrl);
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout,
+  });
+
+  return new Promise((resolve, reject) => {
+    rl.question('Enter the code from that page here: ', (code) => {
+      rl.close();
+      oAuth2Client.getToken(code, (err, token) => {
+        if (err) return reject(err);
+        oAuth2Client.setCredentials(token);
+        fs.writeFileSync(TOKEN_PATH, JSON.stringify(token));
+        console.log('✅ Token stored to', TOKEN_PATH);
+        resolve(oAuth2Client);
+      });
+    });
+  });
 }
 
 async function createSpreadsheet(auth, name) {
   const sheets = google.sheets({ version: 'v4', auth });
+  console.log('Creating spreadsheet...');
   const res = await sheets.spreadsheets.create({
     resource: { properties: { title: name } }
   });
@@ -22,6 +73,7 @@ async function createSpreadsheet(auth, name) {
 
 async function initializeSheet(auth, spreadsheetId) {
   const sheets = google.sheets({ version: 'v4', auth });
+  console.log('Initializing headers...');
   await sheets.spreadsheets.values.update({
     spreadsheetId,
     range: 'Sheet1!A1:C1',
@@ -35,12 +87,8 @@ async function deployScript(auth, spreadsheetId) {
   const receiverCode = fs.readFileSync(path.join(process.cwd(), 'DataReceiver.js'), 'utf8');
   let manifest = fs.readFileSync(path.join(process.cwd(), 'appsscript.json'), 'utf8');
 
-  // Ensure manifest has webapp config
   const manifestObj = JSON.parse(manifest);
-  manifestObj.webapp = {
-    access: 'ANYONE',
-    executeAs: 'USER_DEPLOYING'
-  };
+  manifestObj.webapp = { access: 'ANYONE', executeAs: 'USER_DEPLOYING' };
   manifest = JSON.stringify(manifestObj, null, 2);
 
   console.log('Creating Apps Script project...');
@@ -49,7 +97,6 @@ async function deployScript(auth, spreadsheetId) {
   });
   const scriptId = createRes.data.scriptId;
 
-  console.log('Uploading code...');
   await script.projects.updateContent({
     scriptId,
     resource: {
@@ -66,7 +113,7 @@ async function deployScript(auth, spreadsheetId) {
     resource: { description: 'Initial Deployment' }
   });
 
-  console.log('Creating deployment...');
+  console.log('Deploying as Web App...');
   const deployRes = await script.projects.deployments.create({
     scriptId,
     resource: {
@@ -80,31 +127,20 @@ async function deployScript(auth, spreadsheetId) {
 }
 
 async function run() {
-  const meetName = process.argv[2] || 'New Swim Meet';
-  console.log(`Setting up meet: ${meetName}`);
+  const name = process.argv[2] || 'New Swim Meet';
+  try {
+    const auth = await getAuth();
+    const spreadsheet = await createSpreadsheet(auth, name);
+    await initializeSheet(auth, spreadsheet.spreadsheetId);
+    const deployment = await deployScript(auth, spreadsheet.spreadsheetId);
 
-  const token = await getAccessToken();
-  const auth = new google.auth.OAuth2();
-  auth.setCredentials({ access_token: token });
-
-  console.log('Creating spreadsheet...');
-  const spreadsheet = await createSpreadsheet(auth, meetName);
-  const spreadsheetId = spreadsheet.spreadsheetId;
-  console.log(`Spreadsheet created: ${spreadsheetId}`);
-
-  console.log('Initializing headers...');
-  await initializeSheet(auth, spreadsheetId);
-
-  console.log('Deploying Apps Script...');
-  const deployment = await deployScript(auth, spreadsheetId);
-  console.log(`Deployment successful!`);
-  console.log(`\n--- RESULTS ---`);
-  console.log(`Spreadsheet URL: https://docs.google.com/spreadsheets/d/${spreadsheetId}/edit`);
-  console.log(`Web App URL: https://script.google.com/macros/s/${deployment.deploymentId}/exec`);
-  console.log(`----------------\n`);
+    console.log('\n--- SETUP COMPLETE ---');
+    console.log('Spreadsheet ID:', spreadsheet.spreadsheetId);
+    console.log('Web App URL:', deployment.entryPoints[0].webApp.url);
+    console.log('----------------------');
+  } catch (error) {
+    console.error('❌ Error during setup:', error.message || error);
+  }
 }
 
-run().catch(err => {
-  console.error('Error during setup:', err.response?.data || err.message || err);
-  process.exit(1);
-});
+run();
