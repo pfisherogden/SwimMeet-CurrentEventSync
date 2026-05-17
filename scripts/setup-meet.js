@@ -4,7 +4,7 @@ import path from 'path';
 import http from 'http';
 import url from 'url';
 import { execSync } from 'child_process';
-import open from 'open'; // We'll try to use open, but fall back if not available
+import open from 'open';
 
 const CREDENTIALS_PATH = path.join(process.cwd(), 'credentials.json');
 const TOKEN_PATH = path.join(process.cwd(), 'token.json');
@@ -24,8 +24,21 @@ async function getAuth() {
   const credentials = JSON.parse(content);
   const { client_secret, client_id, redirect_uris } = credentials.installed || credentials.web;
   
-  // Use the first localhost redirect URI, or default to port 3000
-  const redirectUri = redirect_uris.find(u => u.includes('localhost')) || 'http://localhost:3000';
+  // CRITICAL FIX: Find a redirect URI with an explicit port, otherwise default to 3000
+  let redirectUri = redirect_uris.find(u => u.includes('localhost:') || u.includes('127.0.0.1:'));
+  
+  if (!redirectUri) {
+    // If no port found, check if a bare localhost is present
+    const bareLocalhost = redirect_uris.find(u => u.includes('localhost') || u.includes('127.0.0.1'));
+    if (bareLocalhost) {
+      console.warn('⚠️ Warning: Your credentials.json only has a bare localhost redirect. Adding port 3000 for automation.');
+      redirectUri = 'http://localhost:3000';
+    } else {
+      console.error('❌ Error: No localhost redirect URI found in credentials.json');
+      process.exit(1);
+    }
+  }
+
   const oAuth2Client = new google.auth.OAuth2(client_id, client_secret, redirectUri);
 
   if (fs.existsSync(TOKEN_PATH)) {
@@ -45,13 +58,15 @@ function getNewToken(oAuth2Client, redirectUri) {
       scope: SCOPES,
     });
 
-    const port = new url.URL(redirectUri).port || 3000;
+    const parsedUrl = new url.URL(redirectUri);
+    const port = parsedUrl.port || 3000;
     
     const server = http.createServer(async (req, res) => {
       try {
-        if (req.url.indexOf('/?code=') > -1 || req.url.indexOf('?code=') > -1) {
-          const qs = new url.URL(req.url, redirectUri).searchParams;
-          const code = qs.get('code');
+        const requestUrl = new url.URL(req.url, redirectUri);
+        if (requestUrl.searchParams.has('code')) {
+          const code = requestUrl.searchParams.get('code');
+          res.writeHead(200, { 'Content-Type': 'text/html' });
           res.end('<h1>Authentication Successful!</h1><p>You can close this window now.</p>');
           server.close();
           
@@ -62,17 +77,20 @@ function getNewToken(oAuth2Client, redirectUri) {
           resolve(oAuth2Client);
         }
       } catch (e) {
+        res.writeHead(500);
+        res.end('Error parsing code');
         reject(e);
       }
-    }).listen(port, () => {
+    }).listen(port, async () => {
+      console.log(`🚀 Local server listening on port ${port}...`);
       console.log('🚀 Authorize this app by visiting this url:\n', authUrl);
-      // Attempt to open automatically, but don't fail if it doesn't
-      try { execSync(`open "${authUrl}"`); } catch (e) {}
+      try { await open(authUrl); } catch (e) {
+         console.log('Could not open browser automatically. Please open the link above manually.');
+      }
     });
   });
 }
 
-// ... rest of the helper functions (createSpreadsheet, initializeSheet, deployScript) ...
 async function createSpreadsheet(auth, name) {
   const sheets = google.sheets({ version: 'v4', auth });
   console.log('Creating spreadsheet...');
