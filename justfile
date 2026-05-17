@@ -1,9 +1,9 @@
 # Swim Meet Setup Tasks
 
 # Setup a new swim meet (creates sheet and deploys script)
-# Example: just setup "Summer Meet 2026"
-setup name:
-    uv run node scripts/setup-meet.js "{{name}}"
+# Usage: just setup "Meet Name" [team_id]
+setup name team="":
+    uv run node scripts/setup-meet.js "{{name}}" "{{team}}"
 
 # Run integration tests (requires gcloud auth)
 test:
