@@ -12,7 +12,8 @@ function doGet(e) {
   const secret = e.parameter.secret;
   
   if (!team || !secret) {
-    return HtmlService.createHtmlOutput("<b>Error:</b> Missing 'team' or 'secret' parameters.");
+    return HtmlService.createHtmlOutput("<h2>Secure Swim Redirector is ACTIVE</h2><p>This URL is used for permanent team links. Parameters are required for redirection.</p>")
+      .setTitle("Redirector Active");
   }
   
   try {
