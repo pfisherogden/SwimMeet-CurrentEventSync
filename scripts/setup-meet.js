@@ -72,7 +72,7 @@ async function createSpreadsheet(auth, name, headers = null, columnWidth = 180) 
   
   await drive.permissions.create({
     fileId: spreadsheetId,
-    resource: { role: 'viewer', type: 'anyone' }
+    resource: { role: 'reader', type: 'anyone' }
   });
 
   if (headers) {
