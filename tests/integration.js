@@ -1,36 +1,80 @@
 import { execSync } from 'child_process';
 import fs from 'fs';
 import path from 'path';
+import { google } from 'googleapis';
 
-// This test mocks the Google APIs by intercepting the network or by 
-// verifying the script logic if we were to use a real sandbox.
-// For now, we verify that the script correctly parses arguments and attempts to use the APIs.
-
-async function testCliSetup() {
-  console.log("Running integration test: CLI Setup...");
-  
-  // 1. Verify Justfile targets
+async function getAccessToken() {
   try {
-    const justOutput = execSync('just --list').toString();
-    if (!justOutput.includes('setup')) throw new Error('Justfile missing setup target');
-    console.log("✅ Justfile verification passed.");
+    return execSync('gcloud auth application-default print-access-token').toString().trim();
   } catch (e) {
-    console.error("❌ Justfile verification failed:", e.message);
+    console.error('Failed to get access token from gcloud.');
     process.exit(1);
   }
-
-  // 2. Verify AHK Config Logic
-  const ahkContent = fs.readFileSync('DolphinScoreboardSync.ahk', 'utf8');
-  if (ahkContent.includes('FileExist("config.json")')) {
-    console.log("✅ AHK dynamic config logic verified.");
-  } else {
-    console.error("❌ AHK dynamic config logic missing!");
-    process.exit(1);
-  }
-
-  // 3. Mock Setup Run (Dry Run / Validation)
-  // We can't run the full script without real tokens, but we check for logic errors
-  console.log("✅ Integration tests complete (Logic verified).");
 }
 
-testCliSetup();
+async function runE2ETest() {
+  console.log("🚀 Starting Full E2E Integration Test...");
+  const token = await getAccessToken();
+  const auth = new google.auth.OAuth2();
+  auth.setCredentials({ access_token: token });
+
+  const sheets = google.sheets({ version: 'v4', auth });
+
+  try {
+    // 1. Create a Spreadsheet
+    console.log("Step 1: Creating Spreadsheet...");
+    const ss = await sheets.spreadsheets.create({
+      resource: { properties: { title: "E2E Test Meet " + new Date().toISOString() } }
+    });
+    const spreadsheetId = ss.data.spreadsheetId;
+    console.log("✅ Created Spreadsheet:", spreadsheetId);
+
+    // 2. Initialize Headers
+    console.log("Step 2: Initializing Headers...");
+    await sheets.spreadsheets.values.update({
+      spreadsheetId,
+      range: 'Sheet1!A1:C1',
+      valueInputOption: 'RAW',
+      resource: { values: [['Current Event', 'Current Heat', 'Last Updated']] }
+    });
+    console.log("✅ Headers initialized.");
+
+    // 3. Simulate Data Update (AHK POST)
+    console.log("Step 3: Simulating Data Update...");
+    await sheets.spreadsheets.values.update({
+      spreadsheetId,
+      range: 'Sheet1!A2:C2',
+      valueInputOption: 'RAW',
+      resource: { values: [['Event 101', 'Heat 1', new Date().toLocaleTimeString()]] }
+    });
+    console.log("✅ Data updated.");
+
+    // 4. Verify Data
+    console.log("Step 4: Verifying Data...");
+    const res = await sheets.spreadsheets.values.get({
+      spreadsheetId,
+      range: 'Sheet1!A2:B2'
+    });
+    if (res.data.values[0][0] === 'Event 101') {
+      console.log("✅ Data verification SUCCESS.");
+    } else {
+      throw new Error("Data verification FAILED.");
+    }
+
+    // 5. Cleanup
+    console.log("Step 5: Cleaning up (Trashing test sheet)...");
+    const drive = google.drive({ version: 'v3', auth });
+    await drive.files.update({ fileId: spreadsheetId, resource: { trashed: true } });
+    console.log("✅ Cleanup complete.");
+
+    console.log("\n🎉 ALL E2E TESTS PASSED SUCCESSFULLY!");
+  } catch (err) {
+    console.error("❌ E2E Test FAILED:", err.message);
+    if (err.message.includes("insufficient authentication scopes")) {
+      console.log("\nTIP: Run 'gcloud auth application-default login --scopes=\"https://www.googleapis.com/auth/spreadsheets,https://www.googleapis.com/auth/drive\"'");
+    }
+    process.exit(1);
+  }
+}
+
+runE2ETest();
