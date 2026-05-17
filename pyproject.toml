@@ -1,0 +1,4 @@
+[project]
+name = "swim-meet-setup"
+version = "1.0.0"
+description = "Swim Meet Setup Tools"
