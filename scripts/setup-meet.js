@@ -4,13 +4,13 @@ import path from 'path';
 import { execSync } from 'child_process';
 import readline from 'readline';
 
-// --- RESTRICTED AUTHENTICATION CONFIGURATION ---
-// We use .file scoped permissions so the app can ONLY see files it creates.
+// --- MAXIMALLY RESTRICTED AUTHENTICATION CONFIGURATION ---
+// We use .file scoped permissions for BOTH Drive and Sheets.
+// This ensures the app can ONLY see files it creates or that you explicitly open with it.
 const CREDENTIALS_PATH = path.join(process.cwd(), 'credentials.json');
 const TOKEN_PATH = path.join(process.cwd(), 'token.json');
 const SCOPES = [
-  'https://www.googleapis.com/auth/spreadsheets', // Required to create/edit spreadsheets
-  'https://www.googleapis.com/auth/drive.file',    // ONLY files created or opened by this app
+  'https://www.googleapis.com/auth/drive.file',    // Files created or opened by this app
   'https://www.googleapis.com/auth/script.projects',
   'https://www.googleapis.com/auth/script.deployments'
 ];
@@ -38,7 +38,7 @@ async function getAuth() {
 async function getNewToken(oAuth2Client) {
   const authUrl = oAuth2Client.generateAuthUrl({
     access_type: 'offline',
-    prompt: 'consent', // Force consent to ensure we get a refresh token with new scopes
+    prompt: 'consent',
     scope: SCOPES,
   });
   console.log('🚀 Authorize this app by visiting this url:', authUrl);
@@ -134,7 +134,7 @@ async function run() {
     console.log('Spreadsheet ID:', spreadsheet.spreadsheetId);
     console.log('Web App URL:', deployment.entryPoints[0].webApp.url);
     console.log('----------------------');
-    console.log('Note: This app can only see files it created.');
+    console.log('🔒 SECURITY: This app can ONLY see files it created.');
   } catch (error) {
     console.error('❌ Error during setup:', error.message || error);
   }
