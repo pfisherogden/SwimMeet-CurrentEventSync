@@ -1,16 +1,15 @@
 import { google } from 'googleapis';
 import fs from 'fs';
 import path from 'path';
+import http from 'http';
+import url from 'url';
 import { execSync } from 'child_process';
-import readline from 'readline';
+import open from 'open'; // We'll try to use open, but fall back if not available
 
-// --- MAXIMALLY RESTRICTED AUTHENTICATION CONFIGURATION ---
-// We use .file scoped permissions for BOTH Drive and Sheets.
-// This ensures the app can ONLY see files it creates or that you explicitly open with it.
 const CREDENTIALS_PATH = path.join(process.cwd(), 'credentials.json');
 const TOKEN_PATH = path.join(process.cwd(), 'token.json');
 const SCOPES = [
-  'https://www.googleapis.com/auth/drive.file',    // Files created or opened by this app
+  'https://www.googleapis.com/auth/drive.file',
   'https://www.googleapis.com/auth/script.projects',
   'https://www.googleapis.com/auth/script.deployments'
 ];
@@ -24,7 +23,10 @@ async function getAuth() {
   const content = fs.readFileSync(CREDENTIALS_PATH);
   const credentials = JSON.parse(content);
   const { client_secret, client_id, redirect_uris } = credentials.installed || credentials.web;
-  const oAuth2Client = new google.auth.OAuth2(client_id, client_secret, redirect_uris[0]);
+  
+  // Use the first localhost redirect URI, or default to port 3000
+  const redirectUri = redirect_uris.find(u => u.includes('localhost')) || 'http://localhost:3000';
+  const oAuth2Client = new google.auth.OAuth2(client_id, client_secret, redirectUri);
 
   if (fs.existsSync(TOKEN_PATH)) {
     const token = fs.readFileSync(TOKEN_PATH);
@@ -32,32 +34,45 @@ async function getAuth() {
     return oAuth2Client;
   }
 
-  return await getNewToken(oAuth2Client);
+  return await getNewToken(oAuth2Client, redirectUri);
 }
 
-async function getNewToken(oAuth2Client) {
-  const authUrl = oAuth2Client.generateAuthUrl({
-    access_type: 'offline',
-    prompt: 'consent',
-    scope: SCOPES,
-  });
-  console.log('🚀 Authorize this app by visiting this url:', authUrl);
-  const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
-
+function getNewToken(oAuth2Client, redirectUri) {
   return new Promise((resolve, reject) => {
-    rl.question('Enter the code from that page here: ', (code) => {
-      rl.close();
-      oAuth2Client.getToken(code, (err, token) => {
-        if (err) return reject(err);
-        oAuth2Client.setCredentials(token);
-        fs.writeFileSync(TOKEN_PATH, JSON.stringify(token));
-        console.log('✅ Restricted token stored to', TOKEN_PATH);
-        resolve(oAuth2Client);
-      });
+    const authUrl = oAuth2Client.generateAuthUrl({
+      access_type: 'offline',
+      prompt: 'consent',
+      scope: SCOPES,
+    });
+
+    const port = new url.URL(redirectUri).port || 3000;
+    
+    const server = http.createServer(async (req, res) => {
+      try {
+        if (req.url.indexOf('/?code=') > -1 || req.url.indexOf('?code=') > -1) {
+          const qs = new url.URL(req.url, redirectUri).searchParams;
+          const code = qs.get('code');
+          res.end('<h1>Authentication Successful!</h1><p>You can close this window now.</p>');
+          server.close();
+          
+          const { tokens } = await oAuth2Client.getToken(code);
+          oAuth2Client.setCredentials(tokens);
+          fs.writeFileSync(TOKEN_PATH, JSON.stringify(tokens));
+          console.log('✅ Token stored to', TOKEN_PATH);
+          resolve(oAuth2Client);
+        }
+      } catch (e) {
+        reject(e);
+      }
+    }).listen(port, () => {
+      console.log('🚀 Authorize this app by visiting this url:\n', authUrl);
+      // Attempt to open automatically, but don't fail if it doesn't
+      try { execSync(`open "${authUrl}"`); } catch (e) {}
     });
   });
 }
 
+// ... rest of the helper functions (createSpreadsheet, initializeSheet, deployScript) ...
 async function createSpreadsheet(auth, name) {
   const sheets = google.sheets({ version: 'v4', auth });
   console.log('Creating spreadsheet...');
