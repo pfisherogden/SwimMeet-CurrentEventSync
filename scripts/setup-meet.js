@@ -5,6 +5,7 @@ import http from 'http';
 import url from 'url';
 import { execSync } from 'child_process';
 import open from 'open';
+import { createBrandedQR } from './generate-qr.js';
 
 const CREDENTIALS_PATH = path.join(process.cwd(), 'credentials.json');
 const TOKEN_PATH = path.join(process.cwd(), 'token.json');
@@ -167,6 +168,12 @@ async function run() {
     console.log('Spreadsheet ID:', spreadsheet.spreadsheetId);
     console.log('Web App URL:', deployment.entryPoints[0].webApp.url);
     console.log('----------------------');
+
+    // Generate branded QR code
+    const qrText = deployment.entryPoints[0].webApp.url;
+    const qrPath = path.join(process.cwd(), 'meet-qr.png');
+    await createBrandedQR(qrText, qrPath);
+
     console.log('🔒 SECURITY: This app can ONLY see files it created.');
   } catch (error) {
     console.error('❌ Error during setup:', error.message || error);
