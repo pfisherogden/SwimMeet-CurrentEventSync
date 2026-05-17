@@ -21,27 +21,14 @@ body.dark-mode {
 
 /* Animations */
 @keyframes flash-update {
-    0% {
-        background-color: rgba(255, 255, 255, 0.8);
-    }
-
-    100% {
-        background-color: transparent;
-    }
+    0% { background-color: rgba(255, 255, 255, 0.8); }
+    100% { background-color: transparent; }
 }
 
 @keyframes pulse {
-    0% {
-        opacity: 0.5;
-    }
-
-    50% {
-        opacity: 1;
-    }
-
-    100% {
-        opacity: 0.5;
-    }
+    0% { opacity: 0.5; }
+    50% { opacity: 1; }
+    100% { opacity: 0.5; }
 }
 
 .flash-update {
@@ -61,7 +48,6 @@ body {
     min-height: 100vh;
     width: 100vw;
     overflow-y: auto;
-    /* Enable scrolling */
     display: flex;
     flex-direction: column;
 }
@@ -70,27 +56,22 @@ body {
     display: flex;
     flex-direction: column;
     min-height: 100vh;
-    /* Ensure container is at least full height */
     padding: 10px;
     padding-right: 20px;
-    /* Prevent scrollbar from overlapping content */
 }
 
 /* Status Bar */
 .status-bar {
     display: flex;
     margin-bottom: 0px;
-    /* Reduced margin */
     position: relative;
-    justify-content: flex-end;
-    /* Align all children to the right (since title is absolute) */
+    justify-content: space-between; /* Changed from flex-end */
     font-size: 1rem;
     padding: 5px 10px;
     font-family: sans-serif;
     font-weight: bold;
     opacity: 0.7;
     align-items: center;
-    /* Vertically center */
 }
 
 .right-header {
@@ -98,7 +79,6 @@ body {
     align-items: center;
     gap: 15px;
     z-index: 2;
-    /* Ensure above absolutely positioned title if overlap */
 }
 
 .status-indicator {
@@ -106,16 +86,13 @@ body {
     height: 15px;
     border-radius: 50%;
     background-color: orange;
-    /* Default connecting state */
     display: inline-block;
     flex: 0 0 auto;
-    margin-right: 0;
     transition: background-color 0.3s ease;
 }
 
 .status-connected {
     background-color: #32CD32;
-    /* Lime Green */
     box-shadow: 0 0 5px #32CD32;
     animation: none;
 }
@@ -159,8 +136,6 @@ body {
     display: flex;
     flex-direction: column;
     justify-content: flex-start;
-    /* Align to top so we flow naturally down */
-    /* Center vertically */
     gap: 2vh;
 }
 
@@ -255,12 +230,22 @@ body {
         min-height: 85vh;
     }
 
-    .card {
-        max-height: 40vh;
+    .card { max-height: 40vh; }
+
+    .value { font-size: clamp(4rem, 15vh, 10rem); }
+
+    /* Fix header overlap on mobile */
+    .meet-name {
+        position: static;
+        transform: none;
+        text-align: left;
+        max-width: 50%;
+        font-size: 0.8rem;
+        flex: 1;
     }
 
-    .value {
-        font-size: clamp(4rem, 15vh, 10rem);
+    .time-stamp {
+        font-size: 0.65rem;
     }
 }
 
@@ -277,15 +262,11 @@ body {
     font-size: 1.5rem;
     cursor: pointer;
     opacity: 0.7;
-    /* Increased opacity for better visibility */
     color: var(--text-color);
-    /* Ensure visible on all backgrounds */
     transition: opacity 0.2s;
 }
 
-.icon-btn:hover {
-    opacity: 1;
-}
+.icon-btn:hover { opacity: 1; }
 
 /* Modal */
 .modal {
@@ -301,9 +282,7 @@ body {
     z-index: 100;
 }
 
-.hidden {
-    display: none;
-}
+.hidden { display: none; }
 
 .modal-content {
     background: white;
@@ -353,21 +332,12 @@ body {
 @media (orientation: landscape) {
     .primary-view {
         flex-direction: row;
-        /* Side by side in landscape */
         gap: 20px;
     }
-
-
-
-    .value {
-        font-size: clamp(6rem, 25vh, 14rem);
-        /* Even bigger in landscape */
-    }
+    .value { font-size: clamp(6rem, 25vh, 14rem); }
 }
 
 /* Small phones */
 @media (max-width: 360px) {
-    .status-bar {
-        font-size: 0.7rem;
-    }
+    .status-bar { font-size: 0.7rem; }
 }

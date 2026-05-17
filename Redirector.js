@@ -11,14 +11,13 @@ function doGet(e) {
   const team = e.parameter.team;
   const secret = e.parameter.secret;
   
-  // 1. BASE URL: Show status message for browser visits/authorization
   if (!team || !secret) {
     return HtmlService.createHtmlOutput("<h2>Secure Swim Redirector is ACTIVE</h2><p>This URL is used for permanent team links. Parameters are required for redirection.</p>")
       .setTitle("Redirector Active");
   }
   
   try {
-    // 🔒 RESTRICTED: Uses the active spreadsheet (Master Sheet) only.
+    // 🔒 RESTRICTED: Uses the active spreadsheet (Primary Sheet) only.
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     const sheet = ss.getSheets()[0];
     const data = sheet.getDataRange().getValues();
@@ -31,13 +30,9 @@ function doGet(e) {
       const rowMeetName = data[i][3];
       
       if (rowTeam === team && String(rowSecret) === String(secret)) {
-        // Construct the target URL (GitHub Pages app)
         const GITHUB_PAGES_URL = "https://yourusername.github.io/SwimMeet-CurrentEventSync/";
         const redirectUrl = GITHUB_PAGES_URL + "?sheetId=" + rowSheetId + "&meetName=" + encodeURIComponent(rowMeetName) + "&team=" + team + "&secret=" + secret;
         
-        // 🚀 2025 COMPLIANT REDIRECT:
-        // Modern browsers block automatic redirects in frames unless there is "User Activation" (a click).
-        // To be 100% reliable on all mobile devices/browsers, we provide a "Click to Enter" button.
         const html = `
           <!DOCTYPE html>
           <html>
@@ -59,7 +54,6 @@ function doGet(e) {
                 <p style="font-size: 0.8rem; color: #888; margin-top: 1.5rem;">Redirecting automatically if possible...</p>
               </div>
               <script>
-                // Attempt automatic breakout (works in some browsers/versions)
                 try {
                   window.top.location.href = "${redirectUrl}";
                 } catch (e) {
