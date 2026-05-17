@@ -98,14 +98,6 @@ async function deployScript(auth, title, parentId, code, filename, manifest) {
   return { scriptId, url: deployRes.data.entryPoints[0].webApp.url };
 }
 
-async function setScriptProperty(auth, scriptId, property, value) {
-  const script = google.script({ version: 'v1', auth });
-  // Apps Script API doesn't expose PropertiesService directly easily via projects.create,
-  // but we can append code to the project that sets it on first run, or just let users know.
-  // Actually, we'll append a "setup" function and let them know to click it once.
-  console.log(`💡 Config: Property ${property} should be set to ${value}`);
-}
-
 async function handleRedirector(auth, masterSheetId) {
   let redirectorUrl = process.env.REDIRECTOR_WEB_APP_URL;
   if (redirectorUrl) return redirectorUrl;
@@ -116,17 +108,18 @@ async function handleRedirector(auth, masterSheetId) {
   
   // Inject configuration
   redirectorCode = redirectorCode.replace('https://yourusername.github.io/SwimMeet-CurrentEventSync/', pagesUrl);
-  // Inject Master Sheet ID into the setup function
-  redirectorCode = redirectorCode.replace('YOUR_MASTER_SHEET_ID_HERE', masterSheetId);
 
   const manifest = JSON.stringify({
     timeZone: 'America/Los_Angeles',
     exceptionLogging: 'STACKDRIVER',
     runtimeVersion: 'V8',
-    webapp: { access: 'ANYONE', executeAs: 'USER_DEPLOYING' }
+    webapp: { access: 'ANYONE', executeAs: 'USER_DEPLOYING' },
+    oauthScopes: ['https://www.googleapis.com/auth/spreadsheets.currentonly']
   }, null, 2);
 
-  const { url: newUrl } = await deployScript(auth, 'Secure Swim Redirector', null, redirectorCode, 'Redirector', manifest);
+  // BINDING: The script is now bound to the Master Sheet (parentId: masterSheetId)
+  // This allows it to use the restricted currentonly scope.
+  const { url: newUrl } = await deployScript(auth, 'Secure Swim Redirector', masterSheetId, redirectorCode, 'Redirector', manifest);
   
   fs.appendFileSync(ENV_PATH, `\nREDIRECTOR_WEB_APP_URL=${newUrl}\n`);
   console.log('✅ Redirector deployed and saved to .env');

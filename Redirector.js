@@ -15,15 +15,9 @@ function doGet(e) {
     return HtmlService.createHtmlOutput("<b>Error:</b> Missing 'team' or 'secret' parameters.");
   }
   
-  // IMPORTANT: You must set this ID after creating your Master Sheet
-  const MASTER_SHEET_ID = PropertiesService.getScriptProperties().getProperty('MASTER_SHEET_ID');
-  
-  if (!MASTER_SHEET_ID) {
-    return HtmlService.createHtmlOutput("<b>Error:</b> Redirector not configured. MASTER_SHEET_ID property is missing.");
-  }
-
   try {
-    const ss = SpreadsheetApp.openById(MASTER_SHEET_ID);
+    // 🔒 RESTRICTED: Uses the active spreadsheet (Master Sheet) only.
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
     const sheet = ss.getSheets()[0];
     const data = sheet.getDataRange().getValues();
     
@@ -36,7 +30,7 @@ function doGet(e) {
       
       if (rowTeam === team && String(rowSecret) === String(secret)) {
         // Construct the target URL (GitHub Pages app)
-        // Note: Replace with your actual GitHub Pages URL
+        // This URL is automatically updated during CLI setup
         const GITHUB_PAGES_URL = "https://yourusername.github.io/SwimMeet-CurrentEventSync/";
         const redirectUrl = GITHUB_PAGES_URL + "?sheetId=" + rowSheetId + "&meetName=" + encodeURIComponent(rowMeetName);
         
@@ -56,12 +50,4 @@ function doGet(e) {
   }
   
   return HtmlService.createHtmlOutput("<b>Error:</b> Invalid team ID or secret.");
-}
-
-/**
- * Helper to set the Master Sheet ID property via Script Editor
- */
-function setup() {
-  // Replace with your sheet ID
-  PropertiesService.getScriptProperties().setProperty('MASTER_SHEET_ID', 'YOUR_MASTER_SHEET_ID_HERE');
 }
