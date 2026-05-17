@@ -1,3 +1,9 @@
+// This function runs when it receives an HTTP GET request (e.g. from a browser)
+function doGet(e) {
+  return ContentService.createTextOutput("Scoreboard Receiver is ACTIVE. Use POST to update data.")
+    .setMimeType(ContentService.MimeType.TEXT);
+}
+
 // This function runs when it receives an HTTP POST request
 function doPost(e) {
   // Start a log to trace the execution
