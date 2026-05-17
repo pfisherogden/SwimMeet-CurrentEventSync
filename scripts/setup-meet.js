@@ -158,14 +158,30 @@ async function run() {
     const masterUrl = `https://docs.google.com/spreadsheets/d/${masterId}/edit`;
 
     // 4. Final URLs
-    const redirectorUrl = process.env.REDIRECTOR_WEB_APP_URL || 'https://[DEPLOY_REDIRECTOR_FIRST]';
-    const permanentUrl = `${redirectorUrl}?team=${teamId}&secret=${secret}`;
+    const githubPagesUrl = process.env.GITHUB_PAGES_URL || 'https://pfisherogden.github.io/SwimMeet-CurrentEventSync/';
+    let scoreboardUrl = \`\${githubPagesUrl}?sheetId=\${meetSheetId}&meetName=\${encodeURIComponent(meetName)}\`;
+    let qrType = "Direct Scoreboard (Temporary)";
+    let redirectorWarning = "";
 
-    console.log('\n================================================');
+    // 🔗 Optional: Update Master Sheet & Secure Redirector
+    const { masterId, secret } = await handleMasterSheet(auth, teamId, meetName, meetSheetId);
+    const masterUrl = \`https://docs.google.com/spreadsheets/d/\${masterId}/edit\`;
+
+    if (process.env.REDIRECTOR_WEB_APP_URL) {
+      scoreboardUrl = \`\${process.env.REDIRECTOR_WEB_APP_URL}?team=\${teamId}&secret=\${secret}\`;
+      qrType = "Secure Redirector (Permanent)";
+    } else {
+      redirectorWarning = \`\\n⚠️  WARNING: REDIRECTOR_WEB_APP_URL is not set in .env.\\n   The QR code generated is TEMPORARY and specific to THIS meet.\\n   To use a permanent QR code, deploy Redirector.js and update your .env file.\`;
+    }
+
+    console.log('\\n================================================');
     console.log('✅ SETUP COMPLETE');
     console.log('================================================');
-    
-    console.log('\n🔑 ADMIN - ACTION REQUIRED:');
+
+    if (redirectorWarning) console.log(redirectorWarning);
+
+    console.log('\\n🔑 ADMIN - ACTION REQUIRED:');
+
     console.log('------------------------------------------------');
     console.log('1. AUTHORIZE RECEIVER: Open this link ONCE in your browser to confirm permissions:');
     console.log('   👉', receiverUrl);
