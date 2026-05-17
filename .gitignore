@@ -1,6 +1,12 @@
+node_modules/
+package-lock.json
+.DS_Store
+credentials.json
+token.json
+config.json
+.env
 settings.txt
 .clasp.json
-
 tests/test_settings.json
 tests/output/
 __pycache__/
