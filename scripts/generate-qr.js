@@ -33,24 +33,33 @@ export async function createBrandedQR(text, outputPath, logoPath) {
     console.log('Embedding logo:', finalLogoPath);
     try {
       const logo = await loadImage(finalLogoPath);
-      const logoSize = size * 0.22; // 22% of QR size is safe for 'H' correction
+      
+      // Calculate logo size (20% of QR size)
+      const logoSize = size * 0.20; 
       const x = (size - logoSize) / 2;
       const y = (size - logoSize) / 2;
 
-      // Draw white background behind logo
+      // Draw white circular background behind logo for better branding
       ctx.fillStyle = '#ffffff';
       ctx.beginPath();
-      const padding = 10;
-      // Using roundRect if available, fallback to rect
-      if (ctx.roundRect) {
-        ctx.roundRect(x - padding, y - padding, logoSize + (padding * 2), logoSize + (padding * 2), 20);
-      } else {
-        ctx.rect(x - padding, y - padding, logoSize + (padding * 2), logoSize + (padding * 2));
-      }
+      ctx.arc(size / 2, size / 2, (logoSize / 2) + 15, 0, Math.PI * 2);
       ctx.fill();
 
-      // Draw logo
+      // Clip the logo into a circle
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(size / 2, size / 2, logoSize / 2, 0, Math.PI * 2);
+      ctx.clip();
       ctx.drawImage(logo, x, y, logoSize, logoSize);
+      ctx.restore();
+
+      // Draw a subtle border around the circular logo
+      ctx.strokeStyle = '#000000';
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.arc(size / 2, size / 2, logoSize / 2, 0, Math.PI * 2);
+      ctx.stroke();
+
     } catch (e) {
       console.warn('⚠️ Could not load logo image. Generating plain QR code instead.', e.message);
     }
