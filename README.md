@@ -1,6 +1,6 @@
 # SwimMeet-CurrentEventSync
 
-For local swim meets, parents and swimmers need to know what the current event and heat are so that they can plan ahead and get to their events on time. This software monitors the Dolphin CTS 5.0 scoreboard software and syncs the data to a Google Spreadsheet, which is then displayed via a high-visibility web app.
+For local swim meets, parents and swimmers need to know what the current event and heat are so that they can plan ahead and get to their events on time. This software monitors the Dolphin CTS 5.0 scoreboard software and syncs the data to a Google Spreadsheet, which is then displayed via a high-visibility mobile **Event Board**.
 
 ---
 
@@ -18,16 +18,16 @@ We have streamlined the setup process for new teams and meets.
 ### 2. Create a New Meet
 To create a new spreadsheet and deploy the receiver script in one command:
 ```bash
-just setup "Summer Championships 2026"
+just setup "Summer Championships 2026" "dolphin"
 ```
-The script will output your **Spreadsheet ID** and **Web App URL**.
+The script will output your **Spreadsheet URL**, **Receiver URL**, and **Permanent Team URL**.
 
 ### 3. Setup the Windows Client (Scoreboard Computer)
 1.  Go to the [Releases](https://github.com/pfisherogden/SwimMeet-CurrentEventSync/releases) tab and download the latest `DolphinScoreboardSync.exe`.
 2.  Create a `config.json` file in the same folder as the EXE:
     ```json
     {
-      "G_WEB_APP_URL": "YOUR_WEB_APP_URL_FROM_STEP_2"
+      "G_WEB_APP_URL": "YOUR_RECEIVER_URL_FROM_STEP_2"
     }
     ```
 3.  Run the EXE while the Dolphin software is active.
@@ -37,8 +37,8 @@ The script will output your **Spreadsheet ID** and **Web App URL**.
 ## 🔗 Permanent QR Codes (Secure Redirector)
 
 If you want a single QR code that lasts the whole season, use the **Secure Redirector**.
-1.  Follow the [Redirector Setup Guide](docs/RedirectorSetup.md).
-2.  This allows you to update the "Active Meet" in a Master Sheet without changing the printed QR code.
+1.  Follow the [Redirector Management Guide](docs/RedirectorSetup.md).
+2.  The `just setup` tool automatically creates a branded **`meet-qr.png`** pointing to your team's permanent link.
 
 ---
 

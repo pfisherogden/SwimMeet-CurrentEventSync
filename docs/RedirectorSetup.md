@@ -1,38 +1,52 @@
-# Secure Redirector Setup Guide
+# Secure Redirector Setup & Management
 
-The Secure Redirector allows teams to have a permanent QR code/URL that always points to their *currently active* meet, without needing to regenerate the QR code for every event.
+The Secure Redirector provides teams with a **permanent QR code** that always points to their currently active meet. This eliminates the need to print new QR codes for every event.
 
-## 1. Create the Master Sheet
+---
 
-1. Create a new Google Sheet.
-2. Name it something like "Swim Meet Master Redirector".
-3. Set up the following headers in the first row (A1 to D1):
-   - `Team ID` (e.g., `dolphin`)
-   - `Shared Secret` (e.g., `abc-123`)
-   - `Active Sheet ID` (The ID of the spreadsheet created by `setup-meet.js`)
-   - `Meet Name` (e.g., `2024 City Finals`)
+## 🚀 Automated Setup (Recommended)
 
-## 2. Deploy the Redirector Script
+The `just setup` CLI tool handles almost everything for you.
 
-1. Go to [script.google.com](https://script.google.com/).
-2. Create a new project named "Swim Meet Redirector".
-3. Copy the contents of `Redirector.js` into the editor.
-4. Replace `yourusername.github.io` in the code with your actual GitHub Pages domain.
-5. Run the `setup()` function once after replacing `YOUR_MASTER_SHEET_ID_HERE` with your Master Sheet's ID (or set it manually in Project Settings > Script Properties).
-6. Click **Deploy > New Deployment**.
-7. Select **Type: Web App**.
-8. Set **Execute As: Me**.
-9. Set **Who has access: Anyone**.
-10. Copy the **Web App URL**.
+1.  **First Run:** When you run `just setup "Meet Name" "TeamID"` for the first time, the script will:
+    - Create a **Master Redirector Sheet** in your Google Drive.
+    - Generate a secure **Shared Secret** for your team.
+    - Deploy the **Redirector Web App** to Google Cloud.
+    - Save all IDs and URLs to your local `.env` file.
+2.  **Authorization:** You will see a link in the terminal labeled **"AUTHORIZE REDIRECTOR"**. Click it once to grant permissions.
+3.  **Branding:** A `meet-qr.png` is generated automatically, encoding your permanent team link.
 
-## 3. Usage
+---
 
-Distribute URLs in this format:
-`https://script.google.com/macros/s/.../exec?team=TEAM_ID&secret=SECRET`
+## 📊 Managing the Master Sheet
 
-When a meet ends and a new one begins:
-1. Run `node scripts/setup-meet.js "Next Meet Name"`.
-2. Copy the new Spreadsheet ID from the output.
-3. Update the `Active Sheet ID` and `Meet Name` columns in your Master Sheet for the corresponding team.
+Your Master Sheet is the "Control Panel" for your season. You can find its URL in the `just setup` output or in your `meets.log`.
 
-The permanent URL will now automatically redirect users to the new meet's data.
+### Column Reference:
+- **Team ID:** The identifier you use in the CLI (e.g., `dolphin`).
+- **Shared Secret:** A private code that prevents unauthorized access.
+- **Active Sheet ID:** The ID of the spreadsheet for today's meet.
+- **Meet Name:** The title displayed to parents on the bridge page.
+- **Spreadsheet URL:** A clickable link to the active meet for admin use.
+
+**To switch meets:** Simply run `just setup` again with the new meet name. The script will automatically update the **Active Sheet ID** and **Meet Name** in this sheet. Your printed QR codes will instantly point to the new data!
+
+---
+
+## 🔒 Security & Privacy
+
+- **Restricted Access:** The Redirector script uses the `spreadsheets.currentonly` scope. it can ONLY see the Master Sheet it is attached to.
+- **Secret Protection:** The `SHARED_SECRET` is required in the URL to trigger a redirect. Keep this secret shared only via the QR code.
+- **Privacy:** Parents and swimmers access the **Event Board** via a clean breakout redirect, ensuring they never see your private Google Drive environment.
+
+---
+
+## 🛠 Manual Deployment (Fallback)
+
+If you need to deploy the Redirector manually:
+1. Create a Google Sheet with the 5 headers listed above.
+2. Open `Extensions > Apps Script`.
+3. Paste the contents of `Redirector.js` into the editor.
+4. Replace `yourusername.github.io` with your GitHub Pages domain.
+5. Deploy as **Web App** (Execute as: Me, Access: Anyone).
+6. Copy the URL and add it to your `.env` as `REDIRECTOR_WEB_APP_URL`.

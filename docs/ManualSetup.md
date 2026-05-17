@@ -5,7 +5,7 @@ If you prefer to set up your Google Sheet and Apps Script manually without using
 ## Part 1: Create and Share the Spreadsheet
 
 1. **Create a New Sheet:** Go to [sheets.new](https://sheets.new).
-2. **Name Your Sheet:** e.g., "Live Swim Meet Scoreboard".
+2. **Name Your Sheet:** e.g., "Live Swim Meet Event Board".
 3. **Add Headers:** In cell **A1**, type `Current Event`. In cell **B1**, type `Current Heat`. In cell **C1**, type `Last Updated`.
 4. **Share the Sheet:**
    - Click **Share**.

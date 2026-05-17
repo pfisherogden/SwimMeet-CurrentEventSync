@@ -12,7 +12,7 @@ Ensure you have the following installed on your machine:
 
 ## 🧪 Running Integration Tests
 
-The integration test suite verifies the end-to-end flow: creating a spreadsheet, initializing headers, simulating an AHK data post, and verifying data visibility. It also tests the lookup logic for the Secure Redirector.
+The integration test suite verifies the end-to-end flow: creating a spreadsheet, initializing headers, simulating an AHK data post, and verifying data visibility on the **Event Board**. It also tests the lookup logic for the Secure Redirector.
 
 ### 1. Setup Authentication
 Follow the [Authentication Setup Guide](./AuthSetup.md) to ensure your `credentials.json` and `token.json` are present in the project root.
@@ -25,8 +25,9 @@ just test
 
 ### 3. What the test does:
 - Creates a temporary spreadsheet in your Google Drive.
-- Creates a temporary "Master Sheet" to test redirector logic.
+- Creates a temporary 5-column **Master Sheet** to test redirector logic.
 - Verifies that the app has correct permissions (using the restricted `drive.file` scope).
+- Performs a **Live Ping** to ensure the deployed cloud code is reachable.
 - Cleans up by trashing all created files after the test completes.
 
 ## 🚀 Automation Workflow
