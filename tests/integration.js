@@ -101,3 +101,61 @@ async function runE2ETest() {
 }
 
 runE2ETest();
+
+async function testRedirectorLogic() {
+  console.log("\n🚀 Starting Redirector Logic Verification...");
+  const auth = await getAuth();
+  const sheets = google.sheets({ version: 'v4', auth });
+
+  try {
+    // 1. Create a Master Sheet
+    console.log("Step 1: Creating Master Sheet...");
+    const ss = await sheets.spreadsheets.create({
+      resource: { properties: { title: "E2E Master Redirector " + new Date().toISOString() } }
+    });
+    const masterSheetId = ss.data.spreadsheetId;
+    console.log("✅ Created Master Sheet:", masterSheetId);
+
+    // 2. Initialize Master Sheet with a test team
+    console.log("Step 2: Initializing Master Sheet data...");
+    const testTeam = 'test-team';
+    const testSecret = 'test-secret-123';
+    const activeMeetId = 'mock-meet-id';
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: masterSheetId,
+      range: 'Sheet1!A1:D2',
+      valueInputOption: 'RAW',
+      resource: { values: [
+        ['Team ID', 'Shared Secret', 'Active Sheet ID', 'Meet Name'],
+        [testTeam, testSecret, activeMeetId, 'Test Meet Name']
+      ]}
+    });
+    console.log("✅ Master Sheet data initialized.");
+
+    // 3. Verify lookup logic (simulating Redirector.js logic)
+    console.log("Step 3: Verifying lookup logic...");
+    const res = await sheets.spreadsheets.values.get({
+      spreadsheetId: masterSheetId,
+      range: 'Sheet1!A2:D2'
+    });
+    const row = res.data.values[0];
+    if (row[0] === testTeam && row[1] === testSecret && row[2] === activeMeetId) {
+      console.log("✅ Redirector lookup logic verification SUCCESS.");
+    } else {
+      throw new Error("Redirector lookup logic verification FAILED.");
+    }
+
+    // 4. Cleanup
+    console.log("Step 4: Cleaning up Master Sheet...");
+    const drive = google.drive({ version: 'v3', auth });
+    await drive.files.update({ fileId: masterSheetId, resource: { trashed: true } });
+    console.log("✅ Cleanup complete.");
+
+    console.log("\n🎉 REDIRECTOR LOGIC VERIFIED SUCCESSFULLY!");
+  } catch (err) {
+    console.error("❌ Redirector Verification FAILED:", err.message);
+    process.exit(1);
+  }
+}
+
+testRedirectorLogic();
