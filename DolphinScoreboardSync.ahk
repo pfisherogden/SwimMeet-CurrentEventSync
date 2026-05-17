@@ -12,6 +12,16 @@
 ; Make sure this is the URL from your most recent deployment.
 G_WEB_APP_URL := "PASTE_YOUR_URL_HERE"
 
+; --- Load from config.json if available ---
+if FileExist("config.json") {
+    try {
+        configText := FileRead("config.json")
+        if RegExMatch(configText, '"G_WEB_APP_URL"\s*:\s*"([^"]+)"', &match) {
+            G_WEB_APP_URL := match[1]
+        }
+    }
+}
+
 ; --- Set the target window using its executable name ---
 AppName := "ahk_exe Dolphin50.exe"
 
