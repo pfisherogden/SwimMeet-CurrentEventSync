@@ -75,30 +75,62 @@ async function createSpreadsheet(auth, name, headers = null) {
   return spreadsheetId;
 }
 
-async function deployReceiver(auth, spreadsheetId) {
+async function deployScript(auth, title, parentId, code, filename, manifest) {
   const script = google.script({ version: 'v1', auth });
-  const receiverCode = fs.readFileSync(path.join(process.cwd(), 'DataReceiver.js'), 'utf8');
-  const manifest = JSON.stringify({
-    timeZone: 'America/Los_Angeles',
-    exceptionLogging: 'STACKDRIVER',
-    runtimeVersion: 'V8',
-    webapp: { access: 'ANYONE', executeAs: 'USER_DEPLOYING' },
-    oauthScopes: [
-      'https://www.googleapis.com/auth/spreadsheets.currentonly'
-    ]
-  }, null, 2);
-
-  const createRes = await script.projects.create({ resource: { title: 'Receiver: ' + spreadsheetId, parentId: spreadsheetId } });
+  console.log(`Deploying ${title}...`);
+  
+  const createRes = await script.projects.create({ resource: { title, parentId } });
   const scriptId = createRes.data.scriptId;
+  
   await script.projects.updateContent({
     scriptId,
-    resource: { files: [{ name: 'DataReceiver', type: 'SERVER_JS', source: receiverCode }, { name: 'appsscript', type: 'JSON', source: manifest }] }
+    resource: { files: [
+      { name: filename, type: 'SERVER_JS', source: code },
+      { name: 'appsscript', type: 'JSON', source: manifest }
+    ] }
   });
+  
   const versionRes = await script.projects.versions.create({ scriptId, resource: { description: 'Auto' } });
   const deployRes = await script.projects.deployments.create({
     scriptId, resource: { versionNumber: versionRes.data.versionNumber, manifestFileName: 'appsscript' }
   });
-  return deployRes.data.entryPoints[0].webApp.url;
+  
+  return { scriptId, url: deployRes.data.entryPoints[0].webApp.url };
+}
+
+async function setScriptProperty(auth, scriptId, property, value) {
+  const script = google.script({ version: 'v1', auth });
+  // Apps Script API doesn't expose PropertiesService directly easily via projects.create,
+  // but we can append code to the project that sets it on first run, or just let users know.
+  // Actually, we'll append a "setup" function and let them know to click it once.
+  console.log(`💡 Config: Property ${property} should be set to ${value}`);
+}
+
+async function handleRedirector(auth, masterSheetId) {
+  let redirectorUrl = process.env.REDIRECTOR_WEB_APP_URL;
+  if (redirectorUrl) return redirectorUrl;
+
+  console.log('✨ Deploying Secure Redirector for the first time...');
+  let redirectorCode = fs.readFileSync(path.join(process.cwd(), 'Redirector.js'), 'utf8');
+  const pagesUrl = process.env.GITHUB_PAGES_URL || 'https://pfisherogden.github.io/SwimMeet-CurrentEventSync/';
+  
+  // Inject configuration
+  redirectorCode = redirectorCode.replace('https://yourusername.github.io/SwimMeet-CurrentEventSync/', pagesUrl);
+  // Inject Master Sheet ID into the setup function
+  redirectorCode = redirectorCode.replace('YOUR_MASTER_SHEET_ID_HERE', masterSheetId);
+
+  const manifest = JSON.stringify({
+    timeZone: 'America/Los_Angeles',
+    exceptionLogging: 'STACKDRIVER',
+    runtimeVersion: 'V8',
+    webapp: { access: 'ANYONE', executeAs: 'USER_DEPLOYING' }
+  }, null, 2);
+
+  const { url: newUrl } = await deployScript(auth, 'Secure Swim Redirector', null, redirectorCode, 'Redirector', manifest);
+  
+  fs.appendFileSync(ENV_PATH, `\nREDIRECTOR_WEB_APP_URL=${newUrl}\n`);
+  console.log('✅ Redirector deployed and saved to .env');
+  return newUrl;
 }
 
 async function handleMasterSheet(auth, teamId, meetName, meetSheetId) {
@@ -149,43 +181,34 @@ async function run() {
     const meetSheetId = await createSpreadsheet(auth, meetName, ['Current Event', 'Current Heat', 'Last Updated']);
     const meetSheetUrl = `https://docs.google.com/spreadsheets/d/${meetSheetId}/edit`;
 
-    // 2. Deploy Receiver (Action Required: Authorize in browser)
-    console.log('--- ACTION REQUIRED: Apps Script Deployment ---');
-    const receiverUrl = await deployReceiver(auth, meetSheetId);
+    // 2. Deploy Receiver
+    const receiverManifest = JSON.stringify({
+      timeZone: 'America/Los_Angeles',
+      exceptionLogging: 'STACKDRIVER',
+      runtimeVersion: 'V8',
+      webapp: { access: 'ANYONE', executeAs: 'USER_DEPLOYING' },
+      oauthScopes: ['https://www.googleapis.com/auth/spreadsheets.currentonly']
+    }, null, 2);
+    const receiverCode = fs.readFileSync(path.join(process.cwd(), 'DataReceiver.js'), 'utf8');
+    const { url: receiverUrl } = await deployScript(auth, 'Receiver: ' + meetSheetId, meetSheetId, receiverCode, 'DataReceiver', receiverManifest);
 
-    // 3. Handle Master Sheet
+    // 3. Handle Master Sheet & Redirector
     const { masterId, secret } = await handleMasterSheet(auth, teamId, meetName, meetSheetId);
+    const redirectorUrl = await handleRedirector(auth, masterId);
     const masterUrl = `https://docs.google.com/spreadsheets/d/${masterId}/edit`;
+    const permanentUrl = `${redirectorUrl}?team=${teamId}&secret=${secret}`;
 
-    // 4. Final URLs
-    const githubPagesUrl = process.env.GITHUB_PAGES_URL || 'https://pfisherogden.github.io/SwimMeet-CurrentEventSync/';
-    let scoreboardUrl = \`\${githubPagesUrl}?sheetId=\${meetSheetId}&meetName=\${encodeURIComponent(meetName)}\`;
-    let qrType = "Direct Scoreboard (Temporary)";
-    let redirectorWarning = "";
-
-    // 🔗 Optional: Update Master Sheet & Secure Redirector
-    const { masterId, secret } = await handleMasterSheet(auth, teamId, meetName, meetSheetId);
-    const masterUrl = \`https://docs.google.com/spreadsheets/d/\${masterId}/edit\`;
-
-    if (process.env.REDIRECTOR_WEB_APP_URL) {
-      scoreboardUrl = \`\${process.env.REDIRECTOR_WEB_APP_URL}?team=\${teamId}&secret=\${secret}\`;
-      qrType = "Secure Redirector (Permanent)";
-    } else {
-      redirectorWarning = \`\\n⚠️  WARNING: REDIRECTOR_WEB_APP_URL is not set in .env.\\n   The QR code generated is TEMPORARY and specific to THIS meet.\\n   To use a permanent QR code, deploy Redirector.js and update your .env file.\`;
-    }
-
-    console.log('\\n================================================');
+    console.log('\n================================================');
     console.log('✅ SETUP COMPLETE');
     console.log('================================================');
-
-    if (redirectorWarning) console.log(redirectorWarning);
-
-    console.log('\\n🔑 ADMIN - ACTION REQUIRED:');
-
+    
+    console.log('\n🔑 ADMIN - ACTION REQUIRED:');
     console.log('------------------------------------------------');
     console.log('1. AUTHORIZE RECEIVER: Open this link ONCE in your browser to confirm permissions:');
     console.log('   👉', receiverUrl);
-    console.log('\n2. CONFIGURE WINDOWS CLIENT: Paste this into your config.json:');
+    console.log('\n2. AUTHORIZE REDIRECTOR: Open this link ONCE to confirm permissions:');
+    console.log('   👉', redirectorUrl);
+    console.log('\n3. CONFIGURE WINDOWS CLIENT: Paste this into your config.json:');
     console.log('   URL:', receiverUrl);
     
     console.log('\n📊 DATA MANAGEMENT:');
