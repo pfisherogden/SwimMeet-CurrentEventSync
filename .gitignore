@@ -5,6 +5,7 @@ credentials.json
 token.json
 config.json
 .env
+meets.log
 settings.txt
 .clasp.json
 tests/test_settings.json

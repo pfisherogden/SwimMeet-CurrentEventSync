@@ -169,6 +169,11 @@ async function run() {
     console.log('Web App URL:', deployment.entryPoints[0].webApp.url);
     console.log('----------------------');
 
+    // Log the meet info to a local file for history
+    const logEntry = \`[\${new Date().toISOString()}] Meet: \${name}\\n  Spreadsheet ID: \${spreadsheet.spreadsheetId}\\n  Web App URL: \${deployment.entryPoints[0].webApp.url}\\n----------------------\\n\`;
+    fs.appendFileSync(path.join(process.cwd(), 'meets.log'), logEntry);
+    console.log('📝 Meet configuration logged to meets.log');
+
     // Generate branded QR code
     const qrText = deployment.entryPoints[0].webApp.url;
     const qrPath = path.join(process.cwd(), 'meet-qr.png');
