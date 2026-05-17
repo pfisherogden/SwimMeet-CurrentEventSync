@@ -17,7 +17,7 @@ Enable the following APIs for your project:
 1. Go to **APIs & Services > OAuth consent screen**.
 2. Choose **External** (unless you have a Google Workspace org).
 3. Fill in the required app info (App name, support email, developer email).
-4. **Scopes:** Add `.../auth/spreadsheets`, `.../auth/drive`, and `.../auth/script.projects`.
+4. **Scopes:** Add `.../auth/spreadsheets`, `.../auth/drive.file`, and `.../auth/script.projects`.
 5. **Test Users:** IMPORTANT! Add your own Gmail address as a test user.
 
 ## 4. Create Credentials
