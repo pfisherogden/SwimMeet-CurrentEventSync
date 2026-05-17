@@ -34,6 +34,11 @@ document.addEventListener('DOMContentLoaded', () => {
     let sheetId = urlParams.get('sheetId') || localStorage.getItem('swimMeetSheetId');
     const meetName = urlParams.get('meetName'); // No fallback here, handled in display
 
+    // REDIRECTOR PARAMS (for sharing the permanent link)
+    const teamId = urlParams.get('team');
+    const sharedSecret = urlParams.get('secret');
+    const redirectorUrl = localStorage.getItem('swimMeetRedirectorUrl'); // Cached from previous redirect if possible
+
     // UX State
     let isAutoThemeEnabled = localStorage.getItem('swimMeetAutoTheme') !== 'false'; // Default to true
     let autoThemeStart = parseInt(localStorage.getItem('swimMeetAutoThemeStart') || '17', 10);
@@ -45,22 +50,19 @@ document.addEventListener('DOMContentLoaded', () => {
     let lastHeat = null;
 
     // Polling Interval (ms)
-    // Poll faster in offline mode for demo purposes, or keep same? Keep same for now.
     const POLL_INTERVAL = 10000;
     let pollIntervalId;
     let qrcodeObj = null;
 
     // Initialization
-    // If offline, we don't need a sheet ID to start
     if (!sheetId && !isOffline) {
-        // Show demo data so the screen isn't empty behind the modal
         updateDisplay("--", "--", "Setup Required");
         showConfig();
     } else {
         startPolling();
     }
 
-    // Initialize QR Code (initially with current URL)
+    // Initialize QR Code (initially with current URL or redirector URL)
     updateQRCode();
 
     // Initialize Theme
@@ -75,29 +77,17 @@ document.addEventListener('DOMContentLoaded', () => {
         requestWakeLock();
     }
 
-    // Handle Visibility Change for Wakelock Re-acquisition
     // Handle Visibility Change for Wakelock Re-acquisition and Polling Optimization
     document.addEventListener('visibilitychange', async () => {
         if (document.visibilityState === 'visible') {
-            // Resume polling immediately
             console.log('Tab visible: Resuming polling');
             startPolling();
-
-            // Re-acquire Wake Lock if it was active
             if (wakeLockSentinel !== null) {
                 await requestWakeLock();
             }
         } else {
-            // Pause polling to save resources
             console.log('Tab hidden: Pausing polling');
             clearInterval(pollIntervalId);
-
-            // Visual indication (though user won't see it until they come back potentially, 
-            // but helpful if they have side-by-side windows)
-            // Visual indication (though user won't see it until they come back potentially, 
-            // but helpful if they have side-by-side windows)
-            // Keep the last known state or show partial dimmed? 
-            // Let's just dim it.
             statusIndicator.style.opacity = "0.5";
             statusIndicator.title = "Paused (Inactive)";
         }
@@ -108,14 +98,12 @@ document.addEventListener('DOMContentLoaded', () => {
     function startPolling() {
         if (!sheetId && !isOffline) return;
 
-        // Don't show "Live" in status indicator, show name in center
-        // Don't show "Live" in status indicator, show name in center
         statusIndicator.className = "status-indicator status-connecting";
         statusIndicator.title = isOffline ? "Offline Mode" : "Connecting...";
 
         if (isOffline) {
             statusIndicator.classList.remove('status-connecting');
-            statusIndicator.classList.add('status-connected'); // Consider offline as connected/ready
+            statusIndicator.classList.add('status-connected');
         }
 
         // Set header title
@@ -124,7 +112,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Initial Fetch
         fetchData();
-
 
         pollIntervalId = setInterval(() => {
             fetchData();
@@ -146,17 +133,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
-            // Note: cache-busting parameter added to prevent browser caching
-            // Using the "gviz" URL which often returns JSON, but we can also use the export=csv format.
-            // Let's use the export format as it's cleaner for raw text parsing.
             const url = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv&id=${sheetId}&gid=0&cacheBust=${Date.now()}`;
-
             const response = await fetch(url);
-
             if (!response.ok) {
                 throw new Error(`HTTP ${response.status}`);
             }
-
 
             const text = await response.text();
             parseCSV(text);
@@ -174,22 +155,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function parseCSV(csvText) {
-        // Simple CSV parser assuming standard format (headers row 1, data row 2)
-        // A2 is Event, B2 is Heat, C2 is Last Updated
-
         const lines = csvText.split('\n');
         if (lines.length < 2) return;
-
-        // Get the second row (index 1)
-        // Handle potential quotes in CSV if Sheet adds them, but for simple numbers it's usually fine to split by comma
-        // A robust regex split is better but let's try simple comma first for generated numbers.
-        const header = lines[0].split(',');
         const dataRow = lines[1];
-
-        // Regex to handle CSV correctly (ignoring commas inside quotes)
-        // Fixed regex to allow spaces in unquoted fields: removed \s from exclusion class
         const matches = dataRow.match(/(".*?"|[^",]+)(?=\s*,|\s*$)/g) || [];
-        // Fallback for simple splitting if regex fails or data is simple
         const columns = matches.length > 0 ? matches.map(s => s.replace(/^"|"$/g, '')) : dataRow.split(',');
 
         if (columns.length >= 2) {
@@ -197,10 +166,8 @@ document.addEventListener('DOMContentLoaded', () => {
             let heatVal = columns[1].trim();
             const timeVal = columns[2] ? columns[2].trim() : '';
 
-            // Extract last sequence of digits if present (e.g., "Event 99" -> "99")
             const eventMatch = eventVal.match(/(\d+)$/);
             if (eventMatch) eventVal = eventMatch[1];
-
             const heatMatch = heatVal.match(/(\d+)$/);
             if (heatMatch) heatVal = heatMatch[1];
 
@@ -209,17 +176,14 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function updateDisplay(event, heat, time) {
-        // Only trigger animation/update if changed can be nice, but simple replacement works.
         const eventChanged = event !== lastEvent;
         const heatChanged = heat !== lastHeat;
-
         eventDisplay.textContent = event;
         heatDisplay.textContent = heat;
 
-        // Flash animation
         const flashCallback = (el) => {
             el.classList.remove('flash-update');
-            void el.offsetWidth; // trigger reflow
+            void el.offsetWidth;
             el.classList.add('flash-update');
         };
 
@@ -227,16 +191,12 @@ document.addEventListener('DOMContentLoaded', () => {
             flashCallback(eventDisplay.parentElement);
             lastEvent = event;
         }
-
         if (heatChanged) {
             flashCallback(heatDisplay.parentElement);
             lastHeat = heat;
         }
 
         if (time) {
-            // Try to make time friendly? Or just raw string.
-            // Raw string is usually full date time. Let's just show time part if possible.
-            // "2024-01-20T10:00:00.000Z" -> extract time
             try {
                 const date = new Date(time);
                 if (!isNaN(date.getTime())) {
@@ -259,8 +219,6 @@ document.addEventListener('DOMContentLoaded', () => {
         autoThemeCheckbox.checked = isAutoThemeEnabled;
         autoThemeStartInput.value = autoThemeStart;
         autoThemeEndInput.value = autoThemeEnd;
-
-        // Simple toggle for inputs based on checkbox
         toggleAutoThemeConfig();
     }
 
@@ -276,24 +234,16 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     autoThemeCheckbox.addEventListener('change', toggleAutoThemeConfig);
-
-    function hideConfig() {
-        configModal.classList.add('hidden');
-    }
-
+    function hideConfig() { configModal.classList.add('hidden'); }
     configBtn.addEventListener('click', showConfig);
     closeModalBtn.addEventListener('click', hideConfig);
-
-    // Theme Toggle
     themeBtn.addEventListener('click', toggleTheme);
 
     function toggleTheme() {
-        // manual toggle disables auto mode
         if (isAutoThemeEnabled) {
             isAutoThemeEnabled = false;
             localStorage.setItem('swimMeetAutoTheme', 'false');
         }
-
         isDarkMode = !isDarkMode;
         document.body.classList.toggle('dark-mode', isDarkMode);
         localStorage.setItem('swimMeetDarkMode', isDarkMode);
@@ -302,16 +252,11 @@ document.addEventListener('DOMContentLoaded', () => {
     function checkAutoTheme() {
         const hour = new Date().getHours();
         let shouldBeDark = false;
-
         if (autoThemeStart < autoThemeEnd) {
-            // Example: Start 8am, End 5pm (Daytime mode inverted? Or just range)
-            // If range is within same day
             shouldBeDark = hour >= autoThemeStart && hour < autoThemeEnd;
         } else {
-            // Example: Start 17 (5pm), End 7 (7am) (Overnight)
             shouldBeDark = hour >= autoThemeStart || hour < autoThemeEnd;
         }
-
         if (isDarkMode !== shouldBeDark) {
             isDarkMode = shouldBeDark;
             document.body.classList.toggle('dark-mode', isDarkMode);
@@ -319,19 +264,14 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Expose for testing
     if (isTestMode) {
         window.swimApp = {
             updateDisplay: (e, h, t) => updateDisplay(e, h, t),
             toggleTheme: toggleTheme,
-            element: {
-                event: eventDisplay,
-                heat: heatDisplay
-            }
+            element: { event: eventDisplay, heat: heatDisplay }
         };
     }
 
-    // Fullscreen Toggle
     fullscreenBtn.addEventListener('click', () => {
         if (!document.fullscreenElement) {
             document.documentElement.requestFullscreen().catch(err => {
@@ -344,8 +284,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     saveBtn.addEventListener('click', () => {
         const inputVal = sheetIdInput.value.trim();
-
-        // Save Wakelock setting
         const newWakelockState = wakelockCheckbox.checked;
         if (newWakelockState !== isWakelockEnabled) {
             isWakelockEnabled = newWakelockState;
@@ -354,17 +292,14 @@ document.addEventListener('DOMContentLoaded', () => {
             else releaseWakeLock();
         }
 
-        // Save Auto Theme setting
         const newAutoThemeState = autoThemeCheckbox.checked;
         if (newAutoThemeState !== isAutoThemeEnabled) {
             isAutoThemeEnabled = newAutoThemeState;
             localStorage.setItem('swimMeetAutoTheme', isAutoThemeEnabled);
         }
 
-        // Save Custom Times
         const newStart = parseInt(autoThemeStartInput.value, 10);
         const newEnd = parseInt(autoThemeEndInput.value, 10);
-
         if (!isNaN(newStart) && !isNaN(newEnd)) {
             autoThemeStart = newStart;
             autoThemeEnd = newEnd;
@@ -375,19 +310,13 @@ document.addEventListener('DOMContentLoaded', () => {
         if (isAutoThemeEnabled) checkAutoTheme();
 
         if (inputVal) {
-            // Extract ID if they pasted a full URL
-            // patterns: /d/([a-zA-Z0-9-_]+)/
             const match = inputVal.match(/\/d\/([a-zA-Z0-9-_]+)/);
             const idToSave = match ? match[1] : inputVal;
-
             sheetId = idToSave;
             localStorage.setItem('swimMeetSheetId', idToSave);
-
-            // Update URL to include it for sharing (without reloading page if possible, or reload)
             const newUrl = new URL(window.location);
             newUrl.searchParams.set('sheetId', idToSave);
             window.history.pushState({}, '', newUrl);
-
             hideConfig();
             startPolling();
             updateQRCode();
@@ -397,42 +326,48 @@ document.addEventListener('DOMContentLoaded', () => {
     function updateQRCode() {
         const qrContainer = document.getElementById('qrcode');
         if (!qrContainer) return;
-
-        // Clear previous
         qrContainer.innerHTML = "";
 
-        // Calculate appropriate size.
-        // We want it large enough to scan but fitting in the card.
-        // Since the card is flex, we might need to be careful.
-        // Let's pick a reasonable fixed size for the canvas, and let CSS scale it down.
-        // 256 is good quality.
-
-        const currentUrl = window.location.href;
+        // 🔗 SMART SHARING LOGIC
+        // If we arrived via a redirector (team + secret present), 
+        // we want the shared QR code to be the PERMANENT REDIRECT link,
+        // not the temporary sheetId link.
+        
+        let shareUrl = window.location.href;
+        
+        // If we have team/secret in URL, we want to reconstruct the Redirector URL
+        if (teamId && sharedSecret) {
+            // The referrer is likely the redirector!
+            // But to be safe, we can try to find where we came from.
+            const referrer = document.referrer;
+            if (referrer && referrer.includes('script.google.com')) {
+                shareUrl = referrer;
+                // Store it for future sessions that might lose referrer
+                localStorage.setItem('swimMeetRedirectorUrl', referrer);
+            } else if (redirectorUrl) {
+                shareUrl = redirectorUrl;
+            }
+        }
 
         try {
-            // Using global QRCode from script
             qrcodeObj = new QRCode(qrContainer, {
-                text: currentUrl,
+                text: shareUrl,
                 width: 256,
                 height: 256,
                 colorDark: "#000000",
                 colorLight: "#ffffff",
                 correctLevel: QRCode.CorrectLevel.H
             });
-            // Note: QRCode.js might throw if container invalid, handled by try-catch
         } catch (e) {
             console.error("QR Code Error:", e);
         }
     }
+
     async function requestWakeLock() {
         if (!isWakelockEnabled) return;
         try {
             if ('wakeLock' in navigator) {
                 wakeLockSentinel = await navigator.wakeLock.request('screen');
-                console.log('Wake Lock active');
-                wakeLockSentinel.addEventListener('release', () => {
-                    console.log('Wake Lock released');
-                });
             }
         } catch (err) {
             console.error(`${err.name}, ${err.message}`);
