@@ -1,9 +1,7 @@
-settings.txt
-.clasp.json
-
-tests/test_settings.json
-tests/output/
-__pycache__/
-.venv/
-.pytest_cache/
-*.log
+node_modules/
+package-lock.json
+.DS_Store
+credentials.json
+token.json
+config.json
+.env
