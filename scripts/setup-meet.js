@@ -25,11 +25,9 @@ async function getAuth() {
   const credentials = JSON.parse(content);
   const { client_secret, client_id, redirect_uris } = credentials.installed || credentials.web;
   
-  // CRITICAL FIX: Find a redirect URI with an explicit port, otherwise default to 3000
   let redirectUri = redirect_uris.find(u => u.includes('localhost:') || u.includes('127.0.0.1:'));
   
   if (!redirectUri) {
-    // If no port found, check if a bare localhost is present
     const bareLocalhost = redirect_uris.find(u => u.includes('localhost') || u.includes('127.0.0.1'));
     if (bareLocalhost) {
       console.warn('⚠️ Warning: Your credentials.json only has a bare localhost redirect. Adding port 3000 for automation.');
@@ -117,8 +115,12 @@ async function deployScript(auth, spreadsheetId) {
   const receiverCode = fs.readFileSync(path.join(process.cwd(), 'DataReceiver.js'), 'utf8');
   let manifest = fs.readFileSync(path.join(process.cwd(), 'appsscript.json'), 'utf8');
 
+  // CRITICAL FIX: Ensure public access
   const manifestObj = JSON.parse(manifest);
-  manifestObj.webapp = { access: 'ANYONE', executeAs: 'USER_DEPLOYING' };
+  manifestObj.webapp = {
+    access: 'ANYONE',        // public access
+    executeAs: 'USER_DEPLOYING' // Execute as the person who deployed (you)
+  };
   manifest = JSON.stringify(manifestObj, null, 2);
 
   console.log('Creating Apps Script project...');
@@ -164,18 +166,21 @@ async function run() {
     await initializeSheet(auth, spreadsheet.spreadsheetId);
     const deployment = await deployScript(auth, spreadsheet.spreadsheetId);
 
+    const spreadsheetUrl = `https://docs.google.com/spreadsheets/d/${spreadsheet.spreadsheetId}/edit`;
+    const webAppUrl = deployment.entryPoints[0].webApp.url;
+
     console.log('\n--- SETUP COMPLETE ---');
-    console.log('Spreadsheet ID:', spreadsheet.spreadsheetId);
-    console.log('Web App URL:', deployment.entryPoints[0].webApp.url);
+    console.log('Spreadsheet URL:', spreadsheetUrl);
+    console.log('Web App URL:', webAppUrl);
     console.log('----------------------');
 
     // Log the meet info to a local file for history
-    const logEntry = \`[\${new Date().toISOString()}] Meet: \${name}\\n  Spreadsheet ID: \${spreadsheet.spreadsheetId}\\n  Web App URL: \${deployment.entryPoints[0].webApp.url}\\n----------------------\\n\`;
+    const logEntry = `[${new Date().toISOString()}] Meet: ${name}\n  Spreadsheet URL: ${spreadsheetUrl}\n  Web App URL: ${webAppUrl}\n----------------------\n`;
     fs.appendFileSync(path.join(process.cwd(), 'meets.log'), logEntry);
     console.log('📝 Meet configuration logged to meets.log');
 
     // Generate branded QR code
-    const qrText = deployment.entryPoints[0].webApp.url;
+    const qrText = webAppUrl;
     const qrPath = path.join(process.cwd(), 'meet-qr.png');
     await createBrandedQR(qrText, qrPath);
 
