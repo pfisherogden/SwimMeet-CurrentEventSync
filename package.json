@@ -6,6 +6,7 @@
     "canvas": "^3.2.3",
     "dotenv": "^17.4.2",
     "googleapis": "^144.0.0",
+    "node-fetch": "^3.3.2",
     "open": "^10.1.0",
     "qrcode": "^1.5.4"
   }
