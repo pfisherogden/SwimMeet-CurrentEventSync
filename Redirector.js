@@ -36,7 +36,7 @@ function doGet(e) {
         const redirectUrl = GITHUB_PAGES_URL + "?sheetId=" + rowSheetId + "&meetName=" + encodeURIComponent(rowMeetName);
         
         const html = '<!DOCTYPE html><html><head><base target="_top"><script>' +
-                     'window.location.href = "' + redirectUrl + '";' +
+                     'window.top.location.href = "' + redirectUrl + '";' +
                      '</script></head><body>' +
                      'Redirecting to <b>' + rowMeetName + '</b>...' +
                      '</body></html>';
