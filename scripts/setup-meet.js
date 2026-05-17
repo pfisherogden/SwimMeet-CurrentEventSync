@@ -82,7 +82,10 @@ async function deployReceiver(auth, spreadsheetId) {
     timeZone: 'America/Los_Angeles',
     exceptionLogging: 'STACKDRIVER',
     runtimeVersion: 'V8',
-    webapp: { access: 'ANYONE', executeAs: 'USER_DEPLOYING' }
+    webapp: { access: 'ANYONE', executeAs: 'USER_DEPLOYING' },
+    oauthScopes: [
+      'https://www.googleapis.com/auth/spreadsheets.currentonly'
+    ]
   }, null, 2);
 
   const createRes = await script.projects.create({ resource: { title: 'Receiver: ' + spreadsheetId, parentId: spreadsheetId } });
