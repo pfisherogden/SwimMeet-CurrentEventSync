@@ -75,12 +75,17 @@ async function createSpreadsheet(auth, name, headers = null) {
   return spreadsheetId;
 }
 
-async function deployScript(auth, title, parentId, code, filename, manifest) {
+async function deployScript(auth, title, parentId, code, filename, manifest, existingScriptId = null) {
   const script = google.script({ version: 'v1', auth });
-  console.log(`Deploying ${title}...`);
-  
-  const createRes = await script.projects.create({ resource: { title, parentId } });
-  const scriptId = createRes.data.scriptId;
+  let scriptId = existingScriptId;
+
+  if (!scriptId) {
+    console.log(`Creating new project: ${title}...`);
+    const createRes = await script.projects.create({ resource: { title, parentId } });
+    scriptId = createRes.data.scriptId;
+  } else {
+    console.log(`Updating existing project: ${title} (${scriptId})...`);
+  }
   
   await script.projects.updateContent({
     scriptId,
@@ -90,7 +95,7 @@ async function deployScript(auth, title, parentId, code, filename, manifest) {
     ] }
   });
   
-  const versionRes = await script.projects.versions.create({ scriptId, resource: { description: 'Auto' } });
+  const versionRes = await script.projects.versions.create({ scriptId, resource: { description: 'Auto-update' } });
   const deployRes = await script.projects.deployments.create({
     scriptId, resource: { versionNumber: versionRes.data.versionNumber, manifestFileName: 'appsscript' }
   });
@@ -99,30 +104,29 @@ async function deployScript(auth, title, parentId, code, filename, manifest) {
 }
 
 async function handleRedirector(auth, masterSheetId) {
-  let redirectorUrl = process.env.REDIRECTOR_WEB_APP_URL;
-  if (redirectorUrl) return redirectorUrl;
-
-  console.log('✨ Deploying Secure Redirector for the first time...');
+  let scriptId = process.env.REDIRECTOR_SCRIPT_ID;
+  
+  console.log('🔄 Syncing Secure Redirector code...');
   let redirectorCode = fs.readFileSync(path.join(process.cwd(), 'Redirector.js'), 'utf8');
   const pagesUrl = process.env.GITHUB_PAGES_URL || 'https://pfisherogden.github.io/SwimMeet-CurrentEventSync/';
   
-  // Inject configuration
   redirectorCode = redirectorCode.replace('https://yourusername.github.io/SwimMeet-CurrentEventSync/', pagesUrl);
 
   const manifest = JSON.stringify({
-    timeZone: 'America/Los_Angeles',
-    exceptionLogging: 'STACKDRIVER',
-    runtimeVersion: 'V8',
+    timeZone: 'America/Los_Angeles', runtimeVersion: 'V8',
     webapp: { access: 'ANYONE', executeAs: 'USER_DEPLOYING' },
     oauthScopes: ['https://www.googleapis.com/auth/spreadsheets.currentonly']
   }, null, 2);
 
-  // BINDING: The script is now bound to the Master Sheet (parentId: masterSheetId)
-  // This allows it to use the restricted currentonly scope.
-  const { url: newUrl } = await deployScript(auth, 'Secure Swim Redirector', masterSheetId, redirectorCode, 'Redirector', manifest);
+  const { scriptId: newScriptId, url: newUrl } = await deployScript(auth, 'Secure Swim Redirector', masterSheetId, redirectorCode, 'Redirector', manifest, scriptId);
   
-  fs.appendFileSync(ENV_PATH, `\nREDIRECTOR_WEB_APP_URL=${newUrl}\n`);
-  console.log('✅ Redirector deployed and saved to .env');
+  if (!scriptId) {
+    fs.appendFileSync(ENV_PATH, `\nREDIRECTOR_SCRIPT_ID=${newScriptId}\nREDIRECTOR_WEB_APP_URL=${newUrl}\n`);
+    console.log('✅ Redirector deployed for the first time.');
+  } else {
+    console.log('✅ Redirector code updated to latest version.');
+  }
+  
   return newUrl;
 }
 
@@ -135,13 +139,11 @@ async function handleMasterSheet(auth, teamId, meetName, meetSheetId) {
     console.log('✨ Creating a new Master Redirector Sheet...');
     masterId = await createSpreadsheet(auth, 'Swim Meet Master Redirector', ['Team ID', 'Shared Secret', 'Active Sheet ID', 'Meet Name']);
     fs.appendFileSync(ENV_PATH, `\nMASTER_SHEET_ID=${masterId}\n`);
-    console.log('✅ Master Sheet created and saved to .env');
   }
 
   if (!secret) {
     secret = crypto.randomBytes(8).toString('hex');
     fs.appendFileSync(ENV_PATH, `SHARED_SECRET=${secret}\n`);
-    console.log('✅ Generated new shared secret for team:', teamId);
   }
 
   const res = await sheets.spreadsheets.values.get({ spreadsheetId: masterId, range: 'Sheet1!A:D' });
@@ -165,62 +167,34 @@ async function handleMasterSheet(auth, teamId, meetName, meetSheetId) {
 async function run() {
   const meetName = process.argv[2] || 'New Swim Meet';
   const teamId = process.argv[3] || process.env.TEAM_ID || 'default-team';
-
   try {
     const auth = await getAuth();
     console.log('🚀 Starting Automation for team:', teamId);
-
-    // 1. Create Meet Sheet
     const meetSheetId = await createSpreadsheet(auth, meetName, ['Current Event', 'Current Heat', 'Last Updated']);
-    const meetSheetUrl = `https://docs.google.com/spreadsheets/d/${meetSheetId}/edit`;
-
-    // 2. Deploy Receiver
+    const receiverCode = fs.readFileSync(path.join(process.cwd(), 'DataReceiver.js'), 'utf8');
     const receiverManifest = JSON.stringify({
-      timeZone: 'America/Los_Angeles',
-      exceptionLogging: 'STACKDRIVER',
-      runtimeVersion: 'V8',
+      timeZone: 'America/Los_Angeles', runtimeVersion: 'V8',
       webapp: { access: 'ANYONE', executeAs: 'USER_DEPLOYING' },
       oauthScopes: ['https://www.googleapis.com/auth/spreadsheets.currentonly']
     }, null, 2);
-    const receiverCode = fs.readFileSync(path.join(process.cwd(), 'DataReceiver.js'), 'utf8');
     const { url: receiverUrl } = await deployScript(auth, 'Receiver: ' + meetSheetId, meetSheetId, receiverCode, 'DataReceiver', receiverManifest);
-
-    // 3. Handle Master Sheet & Redirector
     const { masterId, secret } = await handleMasterSheet(auth, teamId, meetName, meetSheetId);
     const redirectorUrl = await handleRedirector(auth, masterId);
-    const masterUrl = `https://docs.google.com/spreadsheets/d/${masterId}/edit`;
     const permanentUrl = `${redirectorUrl}?team=${teamId}&secret=${secret}`;
 
     console.log('\n================================================');
     console.log('✅ SETUP COMPLETE');
     console.log('================================================');
-    
     console.log('\n🔑 ADMIN - ACTION REQUIRED:');
-    console.log('------------------------------------------------');
-    console.log('1. AUTHORIZE RECEIVER: Open this link ONCE in your browser to confirm permissions:');
-    console.log('   👉', receiverUrl);
-    console.log('\n2. AUTHORIZE REDIRECTOR: Open this link ONCE to confirm permissions:');
-    console.log('   👉', redirectorUrl);
-    console.log('\n3. CONFIGURE WINDOWS CLIENT: Paste this into your config.json:');
-    console.log('   URL:', receiverUrl);
-    
-    console.log('\n📊 DATA MANAGEMENT:');
-    console.log('------------------------------------------------');
-    console.log('• Meet Spreadsheet:', meetSheetUrl);
-    console.log('• Master Redirector:', masterUrl);
-    
-    console.log('\n🏊 PARENT ACCESS (PUBLIC):');
-    console.log('------------------------------------------------');
-    console.log('• Branded QR Code generated: meet-qr.png');
-    console.log('• Permanent URL:', permanentUrl);
+    console.log('1. AUTHORIZE RECEIVER (New Link!):\n   👉', receiverUrl);
+    console.log('2. AUTHORIZE REDIRECTOR (New Link!):\n   👉', redirectorUrl);
+    console.log('3. UPDATE WINDOWS CLIENT:\n   URL:', receiverUrl);
+    console.log('\n🏊 PARENT ACCESS (PUBLIC):\n• QR Code: meet-qr.png\n• URL:', permanentUrl);
     console.log('================================================\n');
 
-    const logEntry = `[${new Date().toISOString()}] Meet: ${meetName} (Team: ${teamId})\n  Spreadsheet: ${meetSheetUrl}\n  Receiver: ${receiverUrl}\n  Permanent URL: ${permanentUrl}\n----------------------\n`;
+    const logEntry = `[${new Date().toISOString()}] Meet: ${meetName}\n  Spreadsheet: https://docs.google.com/spreadsheets/d/${meetSheetId}/edit\n  Receiver: ${receiverUrl}\n  Permanent: ${permanentUrl}\n----------------------\n`;
     fs.appendFileSync(path.join(process.cwd(), 'meets.log'), logEntry);
-
     await createBrandedQR(permanentUrl, path.join(process.cwd(), 'meet-qr.png'));
-
   } catch (error) { console.error('❌ Error:', error.message || error); }
 }
-
 run();
