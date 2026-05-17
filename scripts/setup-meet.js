@@ -62,7 +62,7 @@ function getNewToken(oAuth2Client, redirectUri) {
   });
 }
 
-async function createSpreadsheet(auth, name, headers = null) {
+async function createSpreadsheet(auth, name, headers = null, columnWidth = 180) {
   const sheets = google.sheets({ version: 'v4', auth });
   const drive = google.drive({ version: 'v3', auth });
   
@@ -81,7 +81,7 @@ async function createSpreadsheet(auth, name, headers = null) {
       resource: { values: [headers] }
     });
     
-    // 🎨 FORMATTING: Make headers bold and pretty
+    // 🎨 FORMATTING: Apply to BOTH Primary and Meet sheets
     await sheets.spreadsheets.batchUpdate({
       spreadsheetId,
       resource: {
@@ -101,7 +101,7 @@ async function createSpreadsheet(auth, name, headers = null) {
           }},
           { updateDimensionProperties: {
             range: { sheetId: 0, dimension: 'COLUMNS', startIndex: 0, endIndex: headers.length },
-            properties: { pixelSize: 180 },
+            properties: { pixelSize: columnWidth },
             fields: 'pixelSize'
           }}
         ]
@@ -159,7 +159,7 @@ async function handlePrimarySheet(auth, teamId, meetName, meetSheetId) {
 
   if (!primaryId) {
     console.log('✨ Creating a new Primary Redirector Sheet...');
-    primaryId = await createSpreadsheet(auth, 'Swim Meet Primary Redirector', headers);
+    primaryId = await createSpreadsheet(auth, 'Swim Meet Primary Redirector', headers, 180);
     fs.appendFileSync(ENV_PATH, `\nPRIMARY_SHEET_ID=${primaryId}\n`);
   }
 
@@ -193,34 +193,54 @@ async function run() {
   try {
     const auth = await getAuth();
     console.log('🚀 Starting Automation for team:', teamId);
-    const meetSheetId = await createSpreadsheet(auth, meetName, ['Current Event', 'Current Heat', 'Last Updated']);
-    const receiverCode = fs.readFileSync(path.join(process.cwd(), 'DataReceiver.js'), 'utf8');
+    
+    // 1. Create Meet Sheet (with new formatting)
+    const meetHeaders = ['Current Event', 'Current Heat', 'Last Updated'];
+    const meetSheetId = await createSpreadsheet(auth, meetName, meetHeaders, 200);
+    const meetSheetUrl = `https://docs.google.com/spreadsheets/d/${meetSheetId}/edit`;
+
+    // 2. Deploy Receiver
     const receiverManifest = JSON.stringify({
       timeZone: 'America/Los_Angeles', runtimeVersion: 'V8',
       webapp: { access: 'ANYONE', executeAs: 'USER_DEPLOYING' },
       oauthScopes: ['https://www.googleapis.com/auth/spreadsheets.currentonly']
     }, null, 2);
+    const receiverCode = fs.readFileSync(path.join(process.cwd(), 'DataReceiver.js'), 'utf8');
     const { url: receiverUrl } = await deployScript(auth, 'Receiver: ' + meetSheetId, meetSheetId, receiverCode, 'DataReceiver', receiverManifest);
+
+    // 3. Handle Primary Sheet & Redirector
     const { primaryId, secret } = await handlePrimarySheet(auth, teamId, meetName, meetSheetId);
     const redirectorUrl = await handleRedirector(auth, primaryId);
+    const masterUrl = `https://docs.google.com/spreadsheets/d/${primaryId}/edit`;
     const permanentUrl = `${redirectorUrl}?team=${teamId}&secret=${secret}`;
 
     console.log('\n================================================');
     console.log('✅ SETUP COMPLETE');
     console.log('================================================');
+    
     console.log('\n🔑 ADMIN - ACTION REQUIRED:');
+    console.log('------------------------------------------------');
     console.log('1. AUTHORIZE RECEIVER (New Link!):\n   👉', receiverUrl);
     console.log('2. AUTHORIZE REDIRECTOR (New Link!):\n   👉', redirectorUrl);
     console.log('3. UPDATE WINDOWS CLIENT:\n   URL:', receiverUrl);
+    
     console.log('\n📊 DATA MANAGEMENT:');
-    console.log('• Meet Spreadsheet: https://docs.google.com/spreadsheets/d/' + meetSheetId + '/edit');
-    console.log('• Primary Redirector: https://docs.google.com/spreadsheets/d/' + primaryId + '/edit');
-    console.log('\n🏊 PARENT ACCESS (PUBLIC):\n• QR Code: meet-qr.png\n• URL:', permanentUrl);
+    console.log('------------------------------------------------');
+    console.log('• Meet Spreadsheet:', meetSheetUrl);
+    console.log('• Primary Redirector:', masterUrl);
+    
+    console.log('\n🏊 PARENT ACCESS (PUBLIC):');
+    console.log('------------------------------------------------');
+    console.log('• Branded QR Code generated: meet-qr.png');
+    console.log('• Permanent URL:', permanentUrl);
     console.log('================================================\n');
 
-    const logEntry = `[${new Date().toISOString()}] Meet: ${meetName}\n  Spreadsheet: https://docs.google.com/spreadsheets/d/${meetSheetId}/edit\n  Receiver: ${receiverUrl}\n  Permanent: ${permanentUrl}\n----------------------\n`;
+    const logEntry = `[${new Date().toISOString()}] Meet: ${meetName} (Team: ${teamId})\n  Spreadsheet: ${meetSheetUrl}\n  Receiver: ${receiverUrl}\n  Permanent URL: ${permanentUrl}\n----------------------\n`;
     fs.appendFileSync(path.join(process.cwd(), 'meets.log'), logEntry);
+
     await createBrandedQR(permanentUrl, path.join(process.cwd(), 'meet-qr.png'));
+
   } catch (error) { console.error('❌ Error:', error.message || error); }
 }
+
 run();
