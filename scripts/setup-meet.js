@@ -64,8 +64,23 @@ function getNewToken(oAuth2Client, redirectUri) {
 
 async function createSpreadsheet(auth, name, headers = null) {
   const sheets = google.sheets({ version: 'v4', auth });
+  const drive = google.drive({ version: 'v3', auth });
+  
+  console.log(`Creating spreadsheet: ${name}...`);
   const res = await sheets.spreadsheets.create({ resource: { properties: { title: name } } });
   const spreadsheetId = res.data.spreadsheetId;
+  
+  // 🔓 Set permissions to "Anyone with the link can view"
+  // This is CRITICAL for the public SPA to be able to fetch the CSV data.
+  await drive.permissions.create({
+    fileId: spreadsheetId,
+    resource: {
+      role: 'viewer',
+      type: 'anyone'
+    }
+  });
+  console.log('✅ Public permissions set (Anyone with link can view).');
+
   if (headers) {
     await sheets.spreadsheets.values.update({
       spreadsheetId, range: 'Sheet1!A1', valueInputOption: 'RAW',
@@ -119,8 +134,6 @@ async function handleMasterSheet(auth, teamId, meetName, meetSheetId) {
   let masterId = process.env.MASTER_SHEET_ID;
   let secret = process.env.SHARED_SECRET;
   const meetSheetUrl = `https://docs.google.com/spreadsheets/d/${meetSheetId}/edit`;
-
-  // UPDATED HEADERS: Added clickable Spreadsheet URL for admin ease
   const headers = ['Team ID', 'Shared Secret', 'Active Sheet ID', 'Meet Name', 'Spreadsheet URL'];
 
   if (!masterId) {
@@ -137,7 +150,6 @@ async function handleMasterSheet(auth, teamId, meetName, meetSheetId) {
   const res = await sheets.spreadsheets.values.get({ spreadsheetId: masterId, range: 'Sheet1!A:E' });
   const rows = res.data.values || [];
   const rowIndex = rows.findIndex(r => r[0] === teamId);
-
   const rowData = [teamId, secret, meetSheetId, meetName, meetSheetUrl];
 
   if (rowIndex === -1) {
