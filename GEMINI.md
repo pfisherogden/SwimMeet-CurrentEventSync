@@ -14,7 +14,8 @@ This project automates swim meet event syncing using Google Sheets, Apps Script,
 - **Secret Management:** Use `crypto.randomBytes(8).toString('hex')` for team shared secrets.
 
 ### 3. Google Apps Script Integration
-- **Container-Bound Scripts:** The Redirector script MUST be bound to the Master Sheet to use the `currentonly` scope.
+- **Container-Bound Scripts:** The Redirector script MUST be bound to the Primary Sheet to use the `currentonly` scope.
+- **Permission Roles:** When using the Drive API to share sheets, always use the role `reader` (not `viewer`).
 - **Iframe Breakout:** Web Apps serving as redirectors MUST use `window.top.location.href` to update the browser URL correctly.
 - **doGet Support:** All Web Apps MUST implement a `doGet` function (even if only to return a status message) to satisfy browser visits during authorization.
 
