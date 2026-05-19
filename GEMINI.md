@@ -28,6 +28,8 @@ This project automates swim meet event syncing using Google Sheets, Apps Script,
 - **Package Manager:** Use `uv` for execution (`uv run node ...`).
 - **Task Runner:** Use `justfile` for all common operations (`install`, `setup`, `test`).
 - **CI/CD:** Windows runners in GitHub Actions automatically compile the AHK script and publish to **GitHub Releases** on tag.
+  - **AHK v2 Compilation:** Must use the `/base` flag pointing to the v2 executable (e.g., `C:\Program Files\AutoHotkey\v2\AutoHotkey64.exe`) as v2 does not use standard bin files in headless environments.
+  - **Shell:** Use `shell: pwsh` for Windows runner compilation steps.
 
 ## 🧪 Testing Guidelines
 - Use `just test` to run the E2E integration suite.

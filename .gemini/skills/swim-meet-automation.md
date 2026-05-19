@@ -25,8 +25,15 @@ If adding new API features:
 2.  Ensure only `.currentonly` or `.file` scopes are used.
 3.  Never add broad `drive` or `spreadsheets` scopes.
 
+## 📦 Task: CI/CD and AHK Compilation
+When modifying the AutoHotkey script or the build workflow:
+1.  **AHK v2 Requirements:** The compiler (\`Ahk2Exe.exe\`) in GitHub Actions requires an explicit \`/base\` parameter pointing to the v2 binary.
+    - Example: \`Ahk2Exe.exe /in "script.ahk" /out "script.exe" /base "C:\Program Files\AutoHotkey\v2\AutoHotkey64.exe"\`
+2.  **Releases:** New EXE files are only published to GitHub Releases when a version tag (e.g., \`v1.0.1\`) is pushed.
+3.  **Windows Runners:** Always use \`runs-on: windows-latest\` and \`shell: pwsh\` for compilation steps to ensure path consistency.
+
 ## 🎨 Task: Branded QR Codes
 When generating QR codes:
-1.  Ensure `docs/logo.png` is high quality.
-2.  The `createBrandedQR` function in `scripts/generate-qr.js` handles the circular masking.
+1.  Ensure \`docs/logo.png\` is high quality.
+2.  The \`createBrandedQR\` function in \`scripts/generate-qr.js\` handles the circular masking.
 3.  QR codes should always point to the **Permanent Redirector URL** when available.
