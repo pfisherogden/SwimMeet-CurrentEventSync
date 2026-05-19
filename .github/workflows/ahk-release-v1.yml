@@ -1,4 +1,4 @@
-name: AHK Compiler
+name: AHK Release
 on:
   push:
     branches: [ main ]
@@ -8,24 +8,22 @@ on:
 jobs:
   build:
     runs-on: windows-latest
+    permissions:
+      contents: write
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install AHK
-        run: choco install autohotkey --version 2.0.11 -y
+      - name: Setup AHK
+        uses: mmshightech/setup-autohotkey@v1
+        with:
+          version: '2.0.11'
 
       - name: Compile
         shell: pwsh
         run: |
-          $compiler = "C:\Program Files\AutoHotkey\Compiler\Ahk2Exe.exe"
-          $base = "C:\Program Files\AutoHotkey\v2\AutoHotkey64.exe"
-          if (Test-Path $compiler) {
-            & $compiler /in "DolphinScoreboardSync.ahk" /out "DolphinScoreboardSync.exe" /base $base
-          } else {
-            Write-Error "Compiler not found"
-            exit 1
-          }
+          $ahkPath = "C:\Program Files\AutoHotkey\v2\AutoHotkey64.exe"
+          Ahk2Exe.exe /in "DolphinScoreboardSync.ahk" /out "DolphinScoreboardSync.exe" /base $ahkPath
 
       - name: Upload
         uses: actions/upload-artifact@v4
@@ -34,7 +32,7 @@ jobs:
           path: DolphinScoreboardSync.exe
 
       - name: Release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/tags/v')
         with:
           files: DolphinScoreboardSync.exe
