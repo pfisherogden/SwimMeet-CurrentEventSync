@@ -3,13 +3,13 @@ on:
   push:
     branches: [ main ]
 jobs:
-  check:
+  win-check:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
       - name: Create Dummy
         run: echo "test" > dummy.txt
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v3
         with:
           name: dummy
           path: dummy.txt
