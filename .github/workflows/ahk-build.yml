@@ -1,0 +1,35 @@
+name: AHK Build
+on:
+  push:
+    branches: [ main ]
+    tags: [ 'v*' ]
+  workflow_dispatch:
+
+jobs:
+  compile:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup AHK
+        uses: mmshightech/setup-autohotkey@v1
+        with:
+          version: '2.0.11'
+
+      - name: Build
+        shell: pwsh
+        run: |
+          $ahkPath = "C:\Program Files\AutoHotkey\v2\AutoHotkey64.exe"
+          if (Test-Path $ahkPath) {
+            Ahk2Exe.exe /in "DolphinScoreboardSync.ahk" /out "DolphinScoreboardSync.exe" /base $ahkPath
+          } else {
+            Write-Error "AHK v2 not found at $ahkPath"
+            exit 1
+          }
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: DolphinScoreboardSync
+          path: DolphinScoreboardSync.exe
