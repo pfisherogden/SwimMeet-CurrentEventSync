@@ -1,0 +1,26 @@
+# Dolphin Scoreboard Sync - Setup Guide
+
+This tool syncs your swim meet's current event and heat from the Dolphin CTS 5.0 scoreboard software to the live Event Board.
+
+## 🚀 Quick Start
+
+1.  **Extract All Files:** Make sure you extract the contents of this ZIP file into a folder on your computer.
+2.  **Configure:**
+    -   Find the file named `config.json.example`.
+    -   Rename it to exactly `config.json`.
+    -   Open it with Notepad and replace the placeholder URL with your team's unique **Receiver URL** (provided by your team admin).
+3.  **Run:**
+    -   Ensure the Dolphin CTS 5.0 software is running and active.
+    -   Double-click `DolphinScoreboardSync.exe`.
+4.  **Verify:**
+    -   A small tooltip will appear in the bottom-right of your screen confirming that data is being sent.
+
+## 🛠 Troubleshooting
+
+-   **Dolphin Not Found:** Ensure the Dolphin CTS 5.0 window is open and the title matches exactly.
+-   **Invalid URL:** Double-check that your `config.json` contains the full `https://...` URL provided during setup.
+-   **Security Warning:** Since this is a custom tool, Windows may show a "SmartScreen" warning. Click "More info" and then "Run anyway".
+
+---
+SwimMeet-CurrentEventSync Team
+https://github.com/pfisherogden/SwimMeet-CurrentEventSync
