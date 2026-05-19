@@ -1,11 +1,29 @@
-name: Windows Check
-on:
-  push:
-    branches: [ main ]
-    tags: [ 'v*' ]
+name: Build
+on: [push]
 jobs:
-  win-check:
+  ahk:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
-      - run: echo "Windows Check Passed"
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install AHK
+        run: choco install autohotkey --version 2.0.11 -y
+
+      - name: Compile
+        shell: pwsh
+        run: |
+          $compiler = "C:\Program Files\AutoHotkey\Compiler\Ahk2Exe.exe"
+          $base = "C:\Program Files\AutoHotkey\v2\AutoHotkey64.exe"
+          if (Test-Path $compiler) {
+            & $compiler /in "DolphinScoreboardSync.ahk" /out "DolphinScoreboardSync.exe" /base $base
+          } else {
+            Write-Error "Compiler not found"
+            exit 1
+          }
+
+      - name: Upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: DolphinScoreboardSync
+          path: DolphinScoreboardSync.exe
