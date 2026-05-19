@@ -6,29 +6,29 @@ on:
   workflow_dispatch:
 
 jobs:
-  compile:
+  build:
     runs-on: windows-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup AHK
-        uses: mmshightech/setup-autohotkey@v1
-        with:
-          version: '2.0.11'
+      - name: Install AHK
+        run: choco install autohotkey --version 2.0.11 -y
 
-      - name: Build
+      - name: Compile
         shell: pwsh
         run: |
-          $ahkPath = "C:\Program Files\AutoHotkey\v2\AutoHotkey64.exe"
-          if (Test-Path $ahkPath) {
-            Ahk2Exe.exe /in "DolphinScoreboardSync.ahk" /out "DolphinScoreboardSync.exe" /base $ahkPath
+          # Use standard choco paths
+          $compiler = "C:\Program Files\AutoHotkey\Compiler\Ahk2Exe.exe"
+          $base = "C:\Program Files\AutoHotkey\v2\AutoHotkey64.exe"
+          if (Test-Path $compiler) {
+            & $compiler /in "DolphinScoreboardSync.ahk" /out "DolphinScoreboardSync.exe" /base $base
           } else {
-            Write-Error "AHK v2 not found at $ahkPath"
+            Write-Error "Compiler not found"
             exit 1
           }
 
-      - name: Upload Artifact
+      - name: Upload
         uses: actions/upload-artifact@v4
         with:
           name: DolphinScoreboardSync
