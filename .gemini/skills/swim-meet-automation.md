@@ -27,10 +27,17 @@ If adding new API features:
 
 ## 📦 Task: CI/CD and AHK Compilation
 When modifying the AutoHotkey script or the build workflow:
-1.  **AHK v2 Requirements:** The compiler (\`Ahk2Exe.exe\`) in GitHub Actions requires an explicit \`/base\` parameter pointing to the v2 binary.
-    - Example: \`Ahk2Exe.exe /in "script.ahk" /out "script.exe" /base "C:\Program Files\AutoHotkey\v2\AutoHotkey64.exe"\`
-2.  **Releases:** New EXE files are only published to GitHub Releases when a version tag (e.g., \`v1.0.1\`) is pushed.
-3.  **Windows Runners:** Always use \`runs-on: windows-latest\` and \`shell: pwsh\` for compilation steps to ensure path consistency.
+1.  **AHK v2 Requirements:** Use the verified \`benmusson/ahk2exe-action@v1\`.
+    - Example:
+      \`\`\`yaml
+      uses: benmusson/ahk2exe-action@v1
+      with:
+        in: script.ahk
+        out: script.exe
+        ahk-tag: v2.0.11
+      \`\`\`
+2.  **Releases:** New EXE files are only published to GitHub Releases when a version tag (e.g., \`v1.0.4\`) is pushed.
+3.  **Windows Runners:** Always use \`runs-on: windows-latest\`.
 
 ## 🎨 Task: Branded QR Codes
 When generating QR codes:

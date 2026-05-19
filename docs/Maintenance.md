@@ -44,7 +44,7 @@ The script will output the **Spreadsheet ID** and the **Web App URL**.
 The Windows AutoHotkey executable (`.exe`) is automatically compiled and published using GitHub Actions on a Windows runner.
 
 ### Technical Note: AHK v2 Compilation
-This project uses **AutoHotkey v2**. In a headless CI environment, the compiler (`Ahk2Exe.exe`) requires an explicit `/base` parameter pointing to the v2 binary (usually `C:\Program Files\AutoHotkey\v2\AutoHotkey64.exe`). The build workflow is configured to handle this automatically.
+This project uses **AutoHotkey v2**. In the CI environment, we use the verified `benmusson/ahk2exe-action@v1` to handle the v2-specific compilation requirements. 
 
 ### To Create a New Version:
 1. Commit your changes to `main`.
