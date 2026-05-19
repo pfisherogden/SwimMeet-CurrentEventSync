@@ -1,10 +1,15 @@
-name: Ubuntu Tag Check
+name: Windows Artifact Check
 on:
   push:
     branches: [ main ]
-    tags: [ 'v*' ]
 jobs:
   check:
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
     steps:
-      - run: echo "Ubuntu Tag Check Passed"
+      - uses: actions/checkout@v4
+      - name: Create Dummy
+        run: echo "test" > dummy.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dummy
+          path: dummy.txt
