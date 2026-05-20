@@ -59,3 +59,17 @@ This project uses **AutoHotkey v2**. In the CI environment, we use the verified 
 - Never commit `credentials.json`, `token.json`, or `config.json`.
 - The `.gitignore` is configured to protect these files, but always verify before pushing.
 - If you suspect a token is compromised, delete `token.json` and revoke access in your Google Account security settings.
+
+## 📈 Scalability & Rate Limits
+
+The Event Board fetches data directly from Google Sheets every 10 seconds. Because it uses a personal Google account, it is subject to a **300 requests per minute** project-wide limit.
+
+### Capacity Calculation:
+- **Polling Interval:** 10 seconds (6 requests per minute per user).
+- **Hard Limit:** 300 requests / 6 requests-per-user = **50 concurrent users**.
+- **With Backoff:** If the limit is hit, the app throttles to 60 seconds (1 request per minute). At this lower frequency, the system can support up to **300 concurrent users**, though data will refresh much more slowly.
+
+### Stability Features:
+- **Exponential Backoff:** If Google returns a 429 error, the app automatically slows down (20s, 40s, 60s) until the error clears.
+- **Stale Data Warning:** If data hasn't refreshed for >2 minutes, the timestamp turns red and shows "(Stale)".
+- **Visibility Optimization:** Polling pauses automatically when the browser tab is hidden to save API quota.
