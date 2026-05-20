@@ -19,28 +19,20 @@ document.addEventListener('DOMContentLoaded', () => {
     const autoThemeEndInput = document.getElementById('auto-theme-end');
 
     // State
-    // Check URL params first, then localStorage
     const urlParams = new URLSearchParams(window.location.search);
-
-    // Inject Verifier/Test Harness if requested
-    if (urlParams.get('verifier') === 'true') {
-        const script = document.createElement('script');
-        script.src = "../tests/verifier.js";
-        document.body.appendChild(script);
-    }
 
     const isTestMode = urlParams.get('test') === 'true' || urlParams.get('verifier') === 'true';
     const isOffline = urlParams.get('offline') === 'true' || urlParams.get('demo') === 'true';
     let sheetId = urlParams.get('sheetId') || localStorage.getItem('swimMeetSheetId');
-    const meetName = urlParams.get('meetName'); // No fallback here, handled in display
+    const meetName = urlParams.get('meetName'); 
 
-    // REDIRECTOR PARAMS (for sharing the permanent link)
+    // REDIRECTOR PARAMS
     const teamId = urlParams.get('team');
     const sharedSecret = urlParams.get('secret');
-    const redirectorUrl = localStorage.getItem('swimMeetRedirectorUrl'); // Cached from previous redirect if possible
+    const redirectorUrl = localStorage.getItem('swimMeetRedirectorUrl');
 
     // UX State
-    let isAutoThemeEnabled = localStorage.getItem('swimMeetAutoTheme') !== 'false'; // Default to true
+    let isAutoThemeEnabled = localStorage.getItem('swimMeetAutoTheme') !== 'false';
     let autoThemeStart = parseInt(localStorage.getItem('swimMeetAutoThemeStart') || '17', 10);
     let autoThemeEnd = parseInt(localStorage.getItem('swimMeetAutoThemeEnd') || '7', 10);
     let isDarkMode = localStorage.getItem('swimMeetDarkMode') === 'true';
@@ -49,10 +41,13 @@ document.addEventListener('DOMContentLoaded', () => {
     let lastEvent = null;
     let lastHeat = null;
 
-    // Polling Interval (ms)
-    const POLL_INTERVAL = 10000;
+    // --- RATE LIMIT & BACKOFF STATE ---
+    const BASE_POLL_INTERVAL = 10000; // 10 seconds
+    let currentPollInterval = BASE_POLL_INTERVAL;
+    let backoffMultiplier = 1;
     let pollIntervalId;
     let qrcodeObj = null;
+    let lastSuccessfulFetch = Date.now();
 
     // Initialization
     if (!sheetId && !isOffline) {
@@ -62,22 +57,18 @@ document.addEventListener('DOMContentLoaded', () => {
         startPolling();
     }
 
-    // Initialize QR Code (initially with current URL or redirector URL)
     updateQRCode();
 
-    // Initialize Theme
     if (isAutoThemeEnabled) {
         checkAutoTheme();
     } else if (isDarkMode) {
         document.body.classList.add('dark-mode');
     }
 
-    // Initialize Wakelock (if enabled)
     if (isWakelockEnabled) {
         requestWakeLock();
     }
 
-    // Handle Visibility Change for Wakelock Re-acquisition and Polling Optimization
     document.addEventListener('visibilitychange', async () => {
         if (document.visibilityState === 'visible') {
             console.log('Tab visible: Resuming polling');
@@ -87,7 +78,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         } else {
             console.log('Tab hidden: Pausing polling');
-            clearInterval(pollIntervalId);
+            stopPolling();
             statusIndicator.style.opacity = "0.5";
             statusIndicator.title = "Paused (Inactive)";
         }
@@ -97,6 +88,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function startPolling() {
         if (!sheetId && !isOffline) return;
+        stopPolling();
 
         statusIndicator.className = "status-indicator status-connecting";
         statusIndicator.title = isOffline ? "Offline Mode" : "Connecting...";
@@ -106,17 +98,31 @@ document.addEventListener('DOMContentLoaded', () => {
             statusIndicator.classList.add('status-connected');
         }
 
-        // Set header title
         const meetNameDisplay = document.getElementById('meet-name-display');
         meetNameDisplay.textContent = meetName || (isOffline ? "Offline Demo" : "Live");
 
-        // Initial Fetch
-        fetchData();
+        fetchData(); // Initial immediate fetch
 
         pollIntervalId = setInterval(() => {
             fetchData();
             if (isAutoThemeEnabled) checkAutoTheme();
-        }, POLL_INTERVAL);
+            
+            // Check for stale data (older than 2 minutes)
+            const minutesStale = (Date.now() - lastSuccessfulFetch) / 60000;
+            if (minutesStale > 2 && !isOffline) {
+                statusIndicator.classList.add('status-error');
+                statusIndicator.title = "Data is STALE (Connection issues)";
+                lastUpdatedDisplay.style.color = "red";
+                lastUpdatedDisplay.textContent += " (Stale)";
+            }
+        }, currentPollInterval);
+    }
+
+    function stopPolling() {
+        if (pollIntervalId) {
+            clearInterval(pollIntervalId);
+            pollIntervalId = null;
+        }
     }
 
     async function fetchData() {
@@ -127,14 +133,18 @@ document.addEventListener('DOMContentLoaded', () => {
                     statusIndicator.className = "status-indicator status-connected";
                     statusIndicator.title = "Offline Mode";
                     statusIndicator.style.opacity = "1";
-                } else {
-                    console.error("MOCK_DATA not found in window object");
                 }
                 return;
             }
 
             const url = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv&id=${sheetId}&gid=0&cacheBust=${Date.now()}`;
             const response = await fetch(url);
+            
+            if (response.status === 429) {
+                handleRateLimit();
+                throw new Error("Rate Limited (429)");
+            }
+
             if (!response.ok) {
                 throw new Error(`HTTP ${response.status}`);
             }
@@ -142,6 +152,16 @@ document.addEventListener('DOMContentLoaded', () => {
             const text = await response.text();
             parseCSV(text);
 
+            // Success! Reset backoff
+            if (backoffMultiplier > 1) {
+                console.log("Connection restored. Resetting poll interval.");
+                backoffMultiplier = 1;
+                currentPollInterval = BASE_POLL_INTERVAL;
+                startPolling(); // Restart with normal interval
+            }
+
+            lastSuccessfulFetch = Date.now();
+            lastUpdatedDisplay.style.color = ""; // Reset stale color
             statusIndicator.className = "status-indicator status-connected";
             statusIndicator.title = "Connected";
             statusIndicator.style.opacity = "1";
@@ -149,9 +169,23 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (error) {
             console.error("Fetch error:", error);
             statusIndicator.className = "status-indicator status-error";
-            statusIndicator.title = "Connection Failed";
+            statusIndicator.title = `Error: ${error.message}`;
             statusIndicator.style.opacity = "1";
         }
+    }
+
+    function handleRateLimit() {
+        // Exponential backoff
+        backoffMultiplier = Math.min(backoffMultiplier * 2, 6); // Max 60 second interval
+        currentPollInterval = BASE_POLL_INTERVAL * backoffMultiplier;
+        
+        console.warn(`Rate limited by Google. Increasing poll interval to ${currentPollInterval/1000}s`);
+        
+        statusIndicator.className = "status-indicator status-error";
+        statusIndicator.title = "High demand. Slowing down updates...";
+        
+        stopPolling();
+        startPolling(); // Restart with new interval
     }
 
     function parseCSV(csvText) {
@@ -328,21 +362,11 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!qrContainer) return;
         qrContainer.innerHTML = "";
 
-        // 🔗 SMART SHARING LOGIC
-        // If we arrived via a redirector (team + secret present), 
-        // we want the shared QR code to be the PERMANENT REDIRECT link,
-        // not the temporary sheetId link.
-        
         let shareUrl = window.location.href;
-        
-        // If we have team/secret in URL, we want to reconstruct the Redirector URL
         if (teamId && sharedSecret) {
-            // The referrer is likely the redirector!
-            // But to be safe, we can try to find where we came from.
             const referrer = document.referrer;
             if (referrer && referrer.includes('script.google.com')) {
                 shareUrl = referrer;
-                // Store it for future sessions that might lose referrer
                 localStorage.setItem('swimMeetRedirectorUrl', referrer);
             } else if (redirectorUrl) {
                 shareUrl = redirectorUrl;
