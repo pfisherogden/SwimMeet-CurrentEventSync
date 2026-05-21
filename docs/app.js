@@ -31,12 +31,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const sharedSecret = urlParams.get('secret');
     const redirectorUrl = localStorage.getItem('swimMeetRedirectorUrl');
 
-    // UX State
-    let isAutoThemeEnabled = localStorage.getItem('swimMeetAutoTheme') !== 'false';
+    // UX State - Defaulting to TRUE for Auto Theme
+    const storedAutoTheme = localStorage.getItem('swimMeetAutoTheme');
+    let isAutoThemeEnabled = storedAutoTheme === null ? true : storedAutoTheme === 'true';
+
     let autoThemeStart = parseInt(localStorage.getItem('swimMeetAutoThemeStart') || '17', 10);
     let autoThemeEnd = parseInt(localStorage.getItem('swimMeetAutoThemeEnd') || '7', 10);
     let isDarkMode = localStorage.getItem('swimMeetDarkMode') === 'true';
     let isWakelockEnabled = localStorage.getItem('swimMeetWakelock') === 'true';
+
     let wakeLockSentinel = null;
     let lastEvent = null;
     let lastHeat = null;
