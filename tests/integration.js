@@ -48,7 +48,7 @@ async function runFullE2ETest() {
     const receiverCode = fs.readFileSync('DataReceiver.js', 'utf8');
     const receiverManifest = JSON.stringify({
       timeZone: 'America/Los_Angeles', runtimeVersion: 'V8',
-      webapp: { access: 'ANYONE', executeAs: 'USER_DEPLOYING' },
+      webapp: { access: 'ANYONE_ANONYMOUS', executeAs: 'USER_DEPLOYING' },
       oauthScopes: ['https://www.googleapis.com/auth/spreadsheets.currentonly']
     });
     
@@ -61,8 +61,9 @@ async function runFullE2ETest() {
     const dep = await script.projects.deployments.create({ scriptId: proj.data.scriptId, resource: { versionNumber: v.data.versionNumber, manifestFileName: 'appsscript' }});
     const receiverUrl = dep.data.entryPoints[0].webApp.url;
     console.log("✅ Receiver Deployed:", receiverUrl);
+    console.log("⚠️  Note: If this was a fresh project, you would need to authorize this URL in a browser.");
 
-    // 3. Deploy Redirector
+    // ... (Step 3 remains similar but uses ANYONE_ANONYMOUS)
     console.log("Step 3: Creating Master Sheet & Deploying Redirector...");
     const masterSS = await sheets.spreadsheets.create({ resource: { properties: { title: "LIVE Master " + new Date().toISOString() } } });
     masterSheetId = masterSS.data.spreadsheetId;
@@ -73,7 +74,7 @@ async function runFullE2ETest() {
     const rproj = await script.projects.create({ resource: { title: 'Test Redirector', parentId: masterSheetId } });
     await script.projects.updateContent({ scriptId: rproj.data.scriptId, resource: { files: [
         { name: 'Redirector', type: 'SERVER_JS', source: redirectorCode },
-        { name: 'appsscript', type: 'JSON', source: receiverManifest } // Reuse same manifest
+        { name: 'appsscript', type: 'JSON', source: receiverManifest } 
     ]}});
     const rv = await script.projects.versions.create({ scriptId: rproj.data.scriptId });
     const rdep = await script.projects.deployments.create({ scriptId: rproj.data.scriptId, resource: { versionNumber: rv.data.versionNumber, manifestFileName: 'appsscript' }});
@@ -81,10 +82,18 @@ async function runFullE2ETest() {
     console.log("✅ Redirector Deployed:", redirectorUrl);
 
     // 4. Ping Live Receiver
-    console.log("Step 4: Pinging Receiver with LIVE data...");
-    await delay(2000); // Give Google a second to propagate
+    console.log("Step 4: Pinging Receiver with LIVE data (Simulating AHK)...");
+    await delay(3000); 
     const postBody = JSON.stringify({ event: "LIVE EVENT 1", heat: "LIVE HEAT 2" });
-    const postRes = await fetch(receiverUrl, { method: 'POST', body: postBody });
+    const postRes = await fetch(receiverUrl, { 
+      method: 'POST', 
+      headers: {
+        'Content-Type': 'application/json',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) DolphinScoreboardSync/1.0'
+      },
+      body: postBody,
+      redirect: 'follow'
+    });
     if (postRes.status !== 200) throw new Error("Receiver POST failed with status: " + postRes.status);
     
     // Verify Spreadsheet updated
