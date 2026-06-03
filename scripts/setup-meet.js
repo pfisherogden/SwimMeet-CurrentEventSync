@@ -106,11 +106,14 @@ async function handleRedirector(auth, primarySheetId) {
   let redirectorCode = fs.readFileSync(path.join(process.cwd(), 'Redirector.js'), 'utf8');
   const pagesUrl = process.env.GITHUB_PAGES_URL || 'https://pfisherogden.github.io/SwimMeet-CurrentEventSync/';
   redirectorCode = redirectorCode.replace('https://yourusername.github.io/SwimMeet-CurrentEventSync/', pagesUrl);
+  
+  // 🔒 STRICT SCOPE: Only allow access to the specific sheet this script is bound to.
   const manifest = JSON.stringify({
     timeZone: 'America/Los_Angeles', runtimeVersion: 'V8',
     webapp: { access: 'ANYONE', executeAs: 'USER_DEPLOYING' },
-    oauthScopes: ['https://www.googleapis.com/auth/spreadsheets.currentonly', 'https://www.googleapis.com/auth/spreadsheets']
+    oauthScopes: ['https://www.googleapis.com/auth/spreadsheets.currentonly']
   }, null, 2);
+  
   const { scriptId: newScriptId, url: newUrl } = await deployScript(auth, 'Secure Swim Redirector', primarySheetId, redirectorCode, 'Redirector', manifest, scriptId);
   if (!scriptId) {
     fs.appendFileSync(ENV_PATH, `\nREDIRECTOR_SCRIPT_ID=${newScriptId}\nREDIRECTOR_WEB_APP_URL=${newUrl}\n`);
@@ -152,15 +155,13 @@ async function run() {
     console.log('🚀 Starting Automation for team:', teamId);
     const meetSheetId = await createSpreadsheet(auth, meetName, ['Current Event', 'Current Heat', 'Last Updated'], 200);
     
-    // INJECT: Specific Sheet ID into Receiver code
     let receiverCode = fs.readFileSync(path.join(process.cwd(), 'DataReceiver.js'), 'utf8');
-    receiverCode = `const SHEET_ID_INJECTED = "${meetSheetId}";\n` + 
-                   receiverCode.replace("const sheetId = props.getProperty('SHEET_ID');", "const sheetId = SHEET_ID_INJECTED;");
-
+    
+    // 🔒 STRICT SCOPE: Only allow access to the specific sheet this script is bound to.
     const receiverManifest = JSON.stringify({
       timeZone: 'America/Los_Angeles', runtimeVersion: 'V8',
       webapp: { access: 'ANYONE', executeAs: 'USER_DEPLOYING' },
-      oauthScopes: ['https://www.googleapis.com/auth/spreadsheets.currentonly', 'https://www.googleapis.com/auth/spreadsheets']
+      oauthScopes: ['https://www.googleapis.com/auth/spreadsheets.currentonly']
     }, null, 2);
     
     const { url: receiverUrl } = await deployScript(auth, 'Receiver: ' + meetSheetId, meetSheetId, receiverCode, 'DataReceiver', receiverManifest);
