@@ -34,8 +34,14 @@ function doPost(e) {
     
     const now = new Date();
     const timestampRange = sheet.getRange("C2");
+    
+    // Explicitly format for the spreadsheet's locale (likely Pacific)
+    // or just set the value and ensure the sheet itself is set to Pacific.
     timestampRange.setValue(now);
     timestampRange.setNumberFormat("M/d/yyyy H:mm:ss");
+    
+    // 💡 FORCE TIMEZONE: Ensure the spreadsheet itself is set to Pacific Time
+    ss.setSpreadsheetTimeZone("America/Los_Angeles");
     
     return ContentService.createTextOutput(JSON.stringify({
       "status": "success",
