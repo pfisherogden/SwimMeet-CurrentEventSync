@@ -41,3 +41,19 @@ This project automates swim meet event syncing using Google Sheets, Apps Script,
 - The scoreboard is located in `docs/` and deployed via GitHub Pages.
 - **Mobile First:** All layouts MUST be optimized for high-visibility outdoor use on mobile devices.
 - **Dynamic Sharing:** The SPA QR code MUST dynamically reconstruct permanent Redirector links when `team` and `secret` parameters are present.
+
+## 🔒 Security Posture
+
+### Current Risks
+- **Unauthenticated POST (ANYONE_ANONYMOUS):** The Data Receiver is intentionally open to allow unauthenticated writes from the AHK script. While the impact is limited (malicious actors can only update three cells in the bound spreadsheet), it is technically a public write point.
+- **Exposure of IDs:** If a Web App URL is leaked, anyone can trigger a sheet update.
+
+### Mitigations in Place
+- **Container-Bound Scopes:** Scripts use `spreadsheets.currentonly`. They physically CANNOT access any other files in your Drive, even if compromised.
+- **Obfuscated URLs:** Script URLs are non-guessable.
+- **Limited Write Surface:** The `doPost` logic only updates `A2`, `B2`, and `C2`. It does not delete data or read sensitive information.
+
+### Recommended Improvements (Future)
+- **PSK Header:** Add a simple shared secret in the `config.json` and verify it in `doPost(e)` headers.
+- **IP Filtering:** (Advanced) Log and verify that POSTs originate from consistent IP ranges.
+- **Rate Limiting:** Implement basic logic to ignore updates sent faster than once per 5 seconds.
