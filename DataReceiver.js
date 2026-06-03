@@ -18,13 +18,29 @@ function doPost(e) {
     if (!ss) throw new Error("Spreadsheet context not found.");
 
     const sheet = ss.getSheets()[0];
-    sheet.getRange("A2").setValue(data.event);
-    sheet.getRange("B2").setValue(data.heat);
-    sheet.getRange("C2").setValue(new Date());
+    
+    // Parse Event Number (e.g., "Event: 8  MIXED..." -> "8")
+    let eventNum = data.event;
+    const eventMatch = data.event.match(/Event:\s*(\d+)/i);
+    if (eventMatch) eventNum = eventMatch[1];
+    
+    // Parse Heat Number (e.g., "Heat: 1" -> "1")
+    let heatNum = data.heat;
+    const heatMatch = data.heat.match(/Heat:\s*(\d+)/i);
+    if (heatMatch) heatNum = heatMatch[1];
+
+    sheet.getRange("A2").setValue(eventNum);
+    sheet.getRange("B2").setValue(heatNum);
+    
+    const now = new Date();
+    const timestampRange = sheet.getRange("C2");
+    timestampRange.setValue(now);
+    timestampRange.setNumberFormat("M/d/yyyy H:mm:ss");
     
     return ContentService.createTextOutput(JSON.stringify({
       "status": "success",
-      "message": "Updated successfully."
+      "message": "Updated successfully.",
+      "received": { event: eventNum, heat: heatNum, time: now.toISOString() }
     })).setMimeType(ContentService.MimeType.JSON);
 
   } catch (error) {
