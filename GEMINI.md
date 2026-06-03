@@ -16,8 +16,9 @@ This project automates swim meet event syncing using Google Sheets, Apps Script,
 ### 3. Google Apps Script Integration
 - **Container-Bound Scripts:** The Redirector script MUST be bound to the Primary Sheet to use the `currentonly` scope.
 - **Permission Roles:** When using the Drive API to share sheets, always use the role `reader` (not `viewer`).
+- **Access Level:** Web Apps (Receiver and Redirector) are deployed with `ANYONE_ANONYMOUS` to support unauthenticated POST requests from the AHK script.
+- **Manual Authorization:** Even with `ANYONE_ANONYMOUS`, the script owner MUST manually visit the Web App URL once in a browser to authorize the script after the initial deployment or major scope changes.
 - **Iframe Breakout:** Web Apps serving as redirectors MUST use `window.top.location.href` to update the browser URL correctly.
-- **doGet Support:** All Web Apps MUST implement a `doGet` function (even if only to return a status message) to satisfy browser visits during authorization.
 
 ### 4. Branded Assets
 - Branded QR codes are generated using `scripts/generate-qr.js`.
