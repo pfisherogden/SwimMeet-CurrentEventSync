@@ -114,9 +114,6 @@ PublishToGoogleSheet(event, heat) {
         whr.SetRequestHeader("Content-Type", "application/json")
         whr.SetRequestHeader("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) DolphinScoreboardSync/1.0")
         
-        ; Enable redirect following (Option 6 = true by default, but let's be explicit)
-        whr.Option(6) := true 
-
         whr.Send(payload)
         
         status := whr.Status
