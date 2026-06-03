@@ -108,24 +108,34 @@ PublishToGoogleSheet(event, heat) {
     local payload := '{"event":"' . escapedEvent . '","heat":"' . escapedHeat . '"}'
 
     try {
-        ; --- CORRECTED: Use the standard ComObject method for web requests in AHKv2 ---
+        ; --- Use synchronous request for better error capture ---
         whr := ComObject("WinHttp.WinHttpRequest.5.1")
-        whr.Open("POST", G_WEB_APP_URL, true) ; true for asynchronous
+        whr.Open("POST", G_WEB_APP_URL, false) ; false for synchronous
         whr.SetRequestHeader("Content-Type", "application/json")
+        whr.SetRequestHeader("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) DolphinScoreboardSync/1.0")
+        
+        ; Enable redirect following (Option 6 = true by default, but let's be explicit)
+        whr.Option(6) := true 
+
         whr.Send(payload)
         
-        whr.WaitForResponse()
+        status := whr.Status
+        statusText := whr.StatusText
+        responseText := whr.ResponseText
 
-        if (whr.Status = 200) {
+        if (status = 200 or status = 201) {
             ToolTip("Update Sent Successfully:`n" . event . "`n" . heat, , , 1)
             SetTimer () => ToolTip(), -3000
         } else {
             ; --- If not successful, show a detailed error tooltip ---
             local errorText := "Google Sheets Update FAILED!`n"
-            errorText .= "Status: " . whr.Status . " " . whr.StatusText . "`n"
-            errorText .= "Response: " . whr.ResponseText
-            ToolTip(errorText, , , 2) ; Show tooltip for longer
-            SetTimer () => ToolTip(), -8000
+            errorText .= "Status: " . status . " " . statusText . "`n"
+            if (InStr(responseText, "Access Denied") or InStr(responseText, "You need access")) {
+                errorText .= "ERROR: The Web App needs to be AUTHORIZED in a browser by the owner.`n"
+            }
+            errorText .= "Response: " . SubStr(responseText, 1, 200)
+            ToolTip(errorText, , , 2)
+            SetTimer () => ToolTip(), -10000
         }
     } catch Any as e {
         ToolTip("Failed to send web request! Error: " . e.Message, , , 1)
