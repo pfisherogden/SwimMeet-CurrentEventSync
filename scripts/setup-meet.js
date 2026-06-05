@@ -110,7 +110,7 @@ async function handleRedirector(auth, primarySheetId) {
   // 🔒 STRICT SCOPE: Only allow access to the specific sheet this script is bound to.
   const manifest = JSON.stringify({
     timeZone: 'America/Los_Angeles', runtimeVersion: 'V8',
-    webapp: { access: 'ANYONE', executeAs: 'USER_DEPLOYING' },
+    webapp: { access: 'ANYONE_ANONYMOUS', executeAs: 'USER_DEPLOYING' },
     oauthScopes: ['https://www.googleapis.com/auth/spreadsheets.currentonly']
   }, null, 2);
   
