@@ -124,6 +124,7 @@
                     <a href="https://github.com/pfisherogden/SwimMeet-CurrentEventSync/releases/download/latest/MM-Scoreboard-Controller-macOS.dmg" class="w-full py-2.5 rounded-xl btn-outline font-bold text-center text-sm text-gray-300">
                         Download for macOS (.dmg)
                     </a>
+                    <div id="publish-timestamp" class="text-[10px] text-gray-500 text-center mt-1">Last version published: July 17, 2026 at 12:40 PM</div>
                 </div>
             </div>
 
@@ -190,6 +191,29 @@
     <footer class="w-full py-6 text-center text-xs text-gray-600 border-t border-gray-900 mt-12 bg-black/20">
         <p>© 2026 SwimMeet Current Event Sync. Built for TVSL Summer Swim Seasons. Open source under MIT.</p>
     </footer>
+
+    <!-- Dynamic Release Timestamp -->
+    <script>
+        (function() {
+            fetch('https://api.github.com/repos/pfisherogden/SwimMeet-CurrentEventSync/releases/latest')
+                .then(res => {
+                    if (res.ok) return res.json();
+                    throw new Error('API request failed');
+                })
+                .then(data => {
+                    if (data && data.published_at) {
+                        const date = new Date(data.published_at);
+                        const options = { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' };
+                        const formatted = date.toLocaleString('en-US', options);
+                        const el = document.getElementById('publish-timestamp');
+                        if (el) {
+                            el.textContent = `Last version published: ${formatted}`;
+                        }
+                    }
+                })
+                .catch(err => console.log('Could not fetch latest release timestamp', err));
+        })();
+    </script>
 </body>
 
 </html>
