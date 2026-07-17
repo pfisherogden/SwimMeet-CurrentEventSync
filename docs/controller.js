@@ -35,7 +35,9 @@
         saveConfigBtn: document.getElementById('save-config-btn'),
         csvFileInput: document.getElementById('csv-file-input'),
         eventsListContainer: document.getElementById('events-list'),
-        eventsCountBadge: document.getElementById('events-count-badge')
+        eventsCountBadge: document.getElementById('events-count-badge'),
+        tabController: document.getElementById('tab-controller'),
+        tabProgram: document.getElementById('tab-program')
     };
 
     // Detect Environment
@@ -45,8 +47,46 @@
         elements.environmentIndicator.className = "text-xs px-2.5 py-0.5 rounded-full font-semibold bg-emerald-900/40 text-emerald-300 border border-emerald-800/40";
     }
 
+    // Set active tab layout (on mobile/narrow screens)
+    function setActiveTab(tabName) {
+        state.activeTab = tabName;
+        const controllerSec = document.getElementById('section-controller');
+        const programSec = document.getElementById('section-program');
+        const tabControllerBtn = document.getElementById('tab-controller');
+        const tabProgramBtn = document.getElementById('tab-program');
+        
+        if (!controllerSec || !programSec || !tabControllerBtn || !tabProgramBtn) return;
+        
+        if (tabName === 'controller') {
+            controllerSec.classList.remove('hidden');
+            programSec.classList.add('hidden');
+            
+            tabControllerBtn.setAttribute('aria-selected', 'true');
+            tabProgramBtn.setAttribute('aria-selected', 'false');
+            
+            tabControllerBtn.classList.add('bg-yellow-600', 'text-black', 'font-bold', 'active-tab');
+            tabControllerBtn.classList.remove('text-gray-400', 'hover:text-gray-200', 'font-semibold');
+            
+            tabProgramBtn.classList.add('text-gray-400', 'hover:text-gray-200', 'font-semibold');
+            tabProgramBtn.classList.remove('bg-yellow-600', 'text-black', 'font-bold', 'active-tab');
+        } else {
+            controllerSec.classList.add('hidden');
+            programSec.classList.remove('hidden');
+            
+            tabControllerBtn.setAttribute('aria-selected', 'false');
+            tabProgramBtn.setAttribute('aria-selected', 'true');
+            
+            tabProgramBtn.classList.add('bg-yellow-600', 'text-black', 'font-bold', 'active-tab');
+            tabProgramBtn.classList.remove('text-gray-400', 'hover:text-gray-200', 'font-semibold');
+            
+            tabControllerBtn.classList.add('text-gray-400', 'hover:text-gray-200', 'font-semibold');
+            tabControllerBtn.classList.remove('bg-yellow-600', 'text-black', 'font-bold', 'active-tab');
+        }
+    }
+
     // Initialize Application
     async function init() {
+        setActiveTab('controller');
         setupEventListeners();
         loadLocalSettings();
         
@@ -137,6 +177,23 @@
 
         // CSV File Loading (Web Mode)
         elements.csvFileInput.addEventListener('change', handleWebCsvUpload);
+
+        // Tab Navigation
+        if (elements.tabController && elements.tabProgram) {
+            elements.tabController.addEventListener('click', () => setActiveTab('controller'));
+            elements.tabProgram.addEventListener('click', () => setActiveTab('program'));
+        }
+
+        // Keyboard shortcuts (Alt+1 / Alt+2)
+        window.addEventListener('keydown', (e) => {
+            if (e.altKey && e.key === '1') {
+                e.preventDefault();
+                setActiveTab('controller');
+            } else if (e.altKey && e.key === '2') {
+                e.preventDefault();
+                setActiveTab('program');
+            }
+        });
 
         // Outdoor Mode Toggle
         const outdoorBtn = document.getElementById('outdoor-mode-btn');

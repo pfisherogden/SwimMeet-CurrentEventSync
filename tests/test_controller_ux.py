@@ -208,3 +208,38 @@ def test_outdoor_mode_text_contrast(page: Page):
     # Assert color of event title element has switched to dark high-contrast color
     outdoor_color = title_element.evaluate("el => window.getComputedStyle(el).color")
     assert outdoor_color in ["rgb(17, 24, 39)", "rgb(0, 0, 0)"]
+
+def test_responsive_tabbed_navigation(page: Page):
+    controller_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "../docs/controller.html"))
+    
+    # 1. Set a narrow screen size (800px width - e.g., mobile/tablet or split-screen)
+    page.set_viewport_size({"width": 800, "height": 600})
+    page.goto(f"file:///{controller_path}")
+
+    # Confirm tab list is visible and controller section is active
+    expect(page.locator("div[role='tablist']")).to_be_visible()
+    expect(page.locator("#section-controller")).to_be_visible()
+    expect(page.locator("#section-program")).to_be_hidden()
+
+    # Click Meet Program tab
+    page.click("#tab-program")
+    expect(page.locator("#section-controller")).to_be_hidden()
+    expect(page.locator("#section-program")).to_be_visible()
+
+    # Keyboard hotkey: Alt+1 should switch back to Controller
+    page.keyboard.press("Alt+1")
+    expect(page.locator("#section-controller")).to_be_visible()
+    expect(page.locator("#section-program")).to_be_hidden()
+
+    # Keyboard hotkey: Alt+2 should switch to Meet Program
+    page.keyboard.press("Alt+2")
+    expect(page.locator("#section-controller")).to_be_hidden()
+    expect(page.locator("#section-program")).to_be_visible()
+
+    # 2. Resize to a wide display (1200px width)
+    page.set_viewport_size({"width": 1200, "height": 800})
+    
+    # Tab list should be hidden, and both sections should be displayed side-by-side
+    expect(page.locator("div[role='tablist']")).to_be_hidden()
+    expect(page.locator("#section-controller")).to_be_visible()
+    expect(page.locator("#section-program")).to_be_visible()
