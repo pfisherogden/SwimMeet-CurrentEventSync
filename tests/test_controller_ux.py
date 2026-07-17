@@ -243,3 +243,20 @@ def test_responsive_tabbed_navigation(page: Page):
     expect(page.locator("div[role='tablist']")).to_be_hidden()
     expect(page.locator("#section-controller")).to_be_visible()
     expect(page.locator("#section-program")).to_be_visible()
+
+def test_mobile_header_fit_and_no_overflow(page: Page):
+    controller_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "../docs/controller.html"))
+    
+    # Set to typical narrow mobile viewport (iPhone 16 / iPhone 15 size is approx 393x852)
+    page.set_viewport_size({"width": 393, "height": 852})
+    page.goto(f"file:///{controller_path}")
+
+    # Verify that settings gear box button exists and is visible on screen
+    expect(page.locator("#header-config-btn")).to_be_visible()
+
+    # Query if there is horizontal window overflow (element scrollWidth exceeding clientWidth)
+    has_horizontal_overflow = page.evaluate("""() => {
+        return document.documentElement.scrollWidth > document.documentElement.clientWidth ||
+               document.body.scrollWidth > window.innerWidth;
+    }""")
+    assert not has_horizontal_overflow, "Header overflow detected on mobile width! Elements are pushing the gear button off-screen."

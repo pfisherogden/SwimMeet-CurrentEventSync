@@ -125,7 +125,7 @@
                 document.body.classList.add('outdoor-mode');
                 const btn = document.getElementById('outdoor-mode-btn');
                 if (btn) {
-                    btn.textContent = '🌑 Normal Mode';
+                    btn.innerHTML = '<span>🌑</span><span class="hidden md:inline"> Normal Mode</span>';
                     btn.classList.add('bg-white', 'text-black', 'border-black');
                     btn.classList.remove('text-gray-300', 'border-gray-700');
                 }
@@ -571,11 +571,11 @@
         localStorage.setItem('outdoorMode', isOutdoor);
         
         if (isOutdoor) {
-            btn.textContent = '🌑 Normal Mode';
+            btn.innerHTML = '<span>🌑</span><span class="hidden md:inline"> Normal Mode</span>';
             btn.classList.add('bg-white', 'text-black', 'border-black');
             btn.classList.remove('text-gray-300', 'border-gray-700');
         } else {
-            btn.textContent = '☀️ Outdoor Mode';
+            btn.innerHTML = '<span>☀️</span><span class="hidden md:inline"> Outdoor Mode</span>';
             btn.classList.remove('bg-white', 'text-black', 'border-black');
             btn.classList.add('text-gray-300', 'border-gray-700');
         }
