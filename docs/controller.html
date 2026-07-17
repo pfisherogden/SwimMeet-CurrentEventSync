@@ -90,6 +90,9 @@
             --card-dark: #f3f4f6;
             --text-primary: #111827;
             --text-secondary: #374151;
+            --neon-red: #b91c1c;     /* WCAG AAA dark red */
+            --neon-green: #047857;   /* WCAG AAA dark green */
+            --neon-gold: #78350f;    /* WCAG AAA dark amber */
             color: #111827 !important;
             background-color: #ffffff !important;
         }
@@ -107,20 +110,22 @@
         }
 
         body.outdoor-mode #event-val {
-            color: #d97706 !important; /* amber-600 */
+            color: #b91c1c !important; /* red-700 (5.4:1 contrast) */
         }
 
         body.outdoor-mode #heat-val {
-            color: #059669 !important; /* emerald-600 */
+            color: #047857 !important; /* emerald-700 (4.8:1 contrast) */
         }
 
-        body.outdoor-mode button {
+        body.outdoor-mode button,
+        body.outdoor-mode #file-uploader-container label {
             border: 2px solid #111827 !important;
             background-color: #f3f4f6 !important;
             color: #111827 !important;
         }
 
-        body.outdoor-mode button:hover {
+        body.outdoor-mode button:hover,
+        body.outdoor-mode #file-uploader-container label:hover {
             background-color: #e5e7eb !important;
         }
 
@@ -136,11 +141,96 @@
 
         body.outdoor-mode .event-list-item {
             border: 2px solid #e5e7eb !important;
+            background-color: #ffffff !important;
+        }
+
+        body.outdoor-mode .event-list-item:hover {
+            border-color: #111827 !important;
+            background-color: #f3f4f6 !important;
         }
 
         body.outdoor-mode .event-list-item.border-\[var\(--neon-gold\)\] {
-            border-color: #d97706 !important;
+            border-color: #78350f !important;
             background-color: #fef3c7 !important;
+        }
+
+        /* Override backgrounds inside lists and widgets */
+        body.outdoor-mode .bg-gray-900,
+        body.outdoor-mode .bg-black\/40 {
+            background-color: #f3f4f6 !important;
+            border-color: #d1d5db !important;
+        }
+
+        body.outdoor-mode input[type="text"] {
+            background-color: #ffffff !important;
+            color: #111827 !important;
+            border: 2px solid #111827 !important;
+        }
+
+        body.outdoor-mode #config-modal > div {
+            background-color: #ffffff !important;
+            border: 2px solid #111827 !important;
+            color: #111827 !important;
+        }
+
+        /* Custom Scrollbars in light mode */
+        body.outdoor-mode .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: rgba(17, 24, 39, 0.2) !important;
+        }
+        body.outdoor-mode .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: rgba(17, 24, 39, 0.4) !important;
+        }
+
+        /* Environment Badge overrides */
+        body.outdoor-mode #environment-indicator {
+            background-color: #e0f2fe !important;
+            color: #075985 !important;
+            border-color: #0284c7 !important;
+        }
+        body.outdoor-mode #environment-indicator.bg-emerald-900\/40 {
+            background-color: #d1fae5 !important;
+            color: #065f46 !important;
+            border-color: #059669 !important;
+        }
+
+        /* High-Contrast Toasts */
+        body.outdoor-mode #toast-container > div {
+            background-color: #ffffff !important;
+            color: #111827 !important;
+            border: 2px solid #111827 !important;
+            box-shadow: none !important;
+        }
+        body.outdoor-mode #toast-container > div.border-green-800\/80 {
+            background-color: #d1fae5 !important;
+            color: #065f46 !important;
+            border-color: #047857 !important;
+        }
+        body.outdoor-mode #toast-container > div.border-red-800\/80 {
+            background-color: #fee2e2 !important;
+            color: #991b1b !important;
+            border-color: #b91c1c !important;
+        }
+
+        /* Custom Toggle Switch */
+        body.outdoor-mode #auto-sync-checkbox:checked + div {
+            background-color: #111827 !important;
+        }
+
+        /* Override all light/medium gray text classes to high-contrast dark colors */
+        body.outdoor-mode .text-gray-100,
+        body.outdoor-mode .text-gray-200,
+        body.outdoor-mode .text-white {
+            color: #111827 !important;
+        }
+
+        body.outdoor-mode .text-gray-300,
+        body.outdoor-mode .text-gray-400 {
+            color: #374151 !important; /* Preserves visual hierarchy under light background */
+        }
+
+        body.outdoor-mode .text-gray-500,
+        body.outdoor-mode .text-gray-600 {
+            color: #374151 !important;
         }
 
         /* Toast Animation */

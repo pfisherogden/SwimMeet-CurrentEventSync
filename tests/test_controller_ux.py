@@ -189,3 +189,22 @@ def test_toast_dismissal_on_click(page: Page):
     finally:
         if os.path.exists(csv_file_path):
             os.remove(csv_file_path)
+
+def test_outdoor_mode_text_contrast(page: Page):
+    controller_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "../docs/controller.html"))
+    page.goto(f"file:///{controller_path}")
+
+    # Confirm title defaults to light/medium gray color in standard dark mode
+    title_element = page.locator("#active-event-panel h2")
+    default_color = title_element.evaluate("el => window.getComputedStyle(el).color")
+    # In standard dark mode, text-gray-200 is rgb(229, 231, 235)
+    assert default_color == "rgb(229, 231, 235)"
+
+    # Enable Outdoor Contrast Mode
+    page.click("#outdoor-mode-btn")
+    body_class = page.locator("body").evaluate("el => el.className")
+    assert "outdoor-mode" in body_class
+
+    # Assert color of event title element has switched to dark high-contrast color
+    outdoor_color = title_element.evaluate("el => window.getComputedStyle(el).color")
+    assert outdoor_color in ["rgb(17, 24, 39)", "rgb(0, 0, 0)"]
