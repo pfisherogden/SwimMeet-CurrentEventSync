@@ -216,6 +216,19 @@
             background-color: #111827 !important;
         }
 
+        /* Tabs in Outdoor Mode */
+        body.outdoor-mode #tab-controller,
+        body.outdoor-mode #tab-program {
+            background-color: transparent !important;
+            color: #4b5563 !important;
+        }
+
+        body.outdoor-mode #tab-controller.active-tab,
+        body.outdoor-mode #tab-program.active-tab {
+            background-color: #111827 !important;
+            color: #ffffff !important;
+        }
+
         /* Override all light/medium gray text classes to high-contrast dark colors */
         body.outdoor-mode .text-gray-100,
         body.outdoor-mode .text-gray-200,
@@ -276,10 +289,20 @@
     </header>
 
     <!-- Main Container -->
-    <main class="flex-1 w-full max-w-7xl mx-auto p-4 md:p-6 grid grid-cols-1 md:grid-cols-12 gap-6">
+    <main class="flex-1 w-full max-w-7xl mx-auto p-4 md:p-6 flex flex-col lg:grid lg:grid-cols-12 gap-6">
+        
+        <!-- Tab Navigation (visible on viewports < 1024px) -->
+        <div role="tablist" aria-label="Timing Panels" class="col-span-12 flex w-full border border-gray-800 rounded-xl bg-black/40 overflow-hidden shrink-0 lg:hidden p-1 gap-1">
+            <button id="tab-controller" role="tab" aria-selected="true" aria-controls="section-controller" class="flex-1 py-3 px-4 rounded-lg font-bold text-center text-sm bg-yellow-600 text-black select-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-yellow-500 min-h-[48px] flex items-center justify-center gap-1.5 transition">
+                <span>🎮</span> Controller <kbd class="hidden sm:inline-block text-[10px] opacity-60 ml-1">⌥1</kbd>
+            </button>
+            <button id="tab-program" role="tab" aria-selected="false" aria-controls="section-program" class="flex-1 py-3 px-4 rounded-lg font-semibold text-center text-sm text-gray-400 hover:text-gray-200 select-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-yellow-500 min-h-[48px] flex items-center justify-center gap-1.5 transition">
+                <span>📋</span> Meet Program <kbd class="hidden sm:inline-block text-[10px] opacity-60 ml-1">⌥2</kbd>
+            </button>
+        </div>
         
         <!-- Left Side: Manual Event & Heat Adjusters -->
-        <section class="md:col-span-7 flex flex-col gap-6">
+        <section id="section-controller" role="tabpanel" aria-labelledby="tab-controller" class="col-span-12 lg:col-span-7 flex flex-col gap-6 lg:flex">
             <div class="glass-card p-6 flex-1 flex flex-col justify-between">
                        <!-- Display Grid -->
                 <div class="grid grid-cols-2 gap-6 flex-1 items-center">
@@ -329,7 +352,7 @@
         </section>
 
         <!-- Right Side: Program Flow (MDB events.csv) -->
-        <section class="md:col-span-5 flex flex-col gap-6">
+        <section id="section-program" role="tabpanel" aria-labelledby="tab-program" class="col-span-12 lg:col-span-5 flex flex-col gap-6 lg:flex hidden">
             <div class="glass-card p-6 flex flex-col h-full min-h-[400px]">
                 
                 <!-- Section Header -->
