@@ -4,6 +4,27 @@ You can run the **Scoreboard Event & Heat Controller** as a full-screen, standal
 
 ---
 
+## ⚙️ Spreadsheet Web App & Endpoint Configuration
+
+The Scoreboard Controller does **not** require any API keys, OAuth client credentials, or passwords to be configured on your mobile device. Security and write permissions are managed on the server-side by the deployed Google Apps Script web application.
+
+### 1. Retrieve Your Web App URL
+To get the endpoint URL that receives scoreboard updates:
+*   **Automatic Setup (Recommended)**: Run `just setup "Your Meet Name"` from your computer's terminal. The setup utility will create the Google Sheet, deploy the backing Apps Script receiver, and print your **`Receiver URL`**.
+*   **Manual Setup**: Follow the [Manual Setup Guide](ManualSetup.md) to create a Google Sheet, paste `DataReceiver.js` into its Extensions > Apps Script editor, and deploy it as a Web App configured to **Execute as: Me** and grant access to **Anyone**. Copy the resulting **Web App URL**.
+
+### 2. Configure the URL inside the Controller
+Once you have the Web App URL (starts with `https://script.google.com/macros/s/.../exec`):
+1.  Open the Scoreboard Controller app.
+2.  Tap the **gear icon (⚙️)** in the top-right header to open the configuration modal.
+3.  Paste the URL into the **Google Sheets Web App URL** input.
+4.  Ensure **Instant Auto-Sync** is toggled on.
+5.  Tap **Save Config**.
+
+The URL is securely stored in your mobile device's local browser storage (`localStorage`) and will persist automatically across app launches.
+
+---
+
 ## 📲 How to Install
 
 ### iOS (iPhones & iPads)
