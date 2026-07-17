@@ -144,17 +144,16 @@ jobs:
           find ./windows-binaries -name "*.msi" -exec cp {} ./release-pack/MM-Scoreboard-Controller-Windows.msi \;
           find ./ahk-binaries -name "*.zip" -exec cp {} ./release-pack/DolphinScoreboardSync-Windows.zip \;
 
-      - name: Publish Prerelease (push to main)
+      - name: Publish Versioned Release (push to main)
         if: github.ref == 'refs/heads/main'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release delete latest --yes || true
-          gh api -X DELETE /repos/${{ github.repository }}/git/refs/tags/latest || true
-          gh release create latest \
-            --title "Latest Pre-release Build" \
-            --notes "Automated release compiled on the latest main branch commit." \
-            --prerelease \
+          VERSION=$(python -c "import json; print(json.load(open('src-tauri/tauri.conf.json'))['version'])")
+          TAG_NAME="v$VERSION-build.${{ github.run_number }}"
+          gh release create $TAG_NAME \
+            --title "Release $TAG_NAME" \
+            --notes "Automated release for main branch commit: ${{ github.sha }}" \
             ./release-pack/*
 
       - name: Publish Full Release (v* Tags)
