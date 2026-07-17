@@ -1,0 +1,17 @@
+{
+  "name": "SwimMeet Scoreboard Controller",
+  "short_name": "Scoreboard Control",
+  "description": "Manual event and heat scoreboard synchronization controller.",
+  "start_url": "controller.html",
+  "display": "standalone",
+  "background_color": "#0d0e12",
+  "theme_color": "#0d0e12",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "logo.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
