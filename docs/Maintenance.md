@@ -30,6 +30,31 @@ just test
 - Performs a **Live Ping** to ensure the deployed cloud code is reachable.
 - Cleans up by trashing all created files after the test completes.
 
+## 🧪 Manual Web App Verification
+When manually verification/testing the deployed **Receiver Web App** via HTTP POST, you must handle Google Apps Script's redirect behavior properly. 
+
+Google redirects all `POST` requests using a `302 Found` status to a dynamic URL under `script.googleusercontent.com`. If the client does not follow this redirect while preserving the `POST` method and body payload, Google will return a `Page Not Found` or `Sorry, unable to open the file at this time` HTML error page.
+
+### Correct Manual Test Commands:
+*   **Via curl**:
+    ```bash
+    curl -L --post301 --post302 --post303 -X POST -H "Content-Type: application/json" \
+      -d '{"event":"Event: 10","heat":"Heat: 2"}' \
+      "YOUR_RECEIVER_URL"
+    ```
+*   **Via Node.js**:
+    ```javascript
+    import fetch from 'node-fetch';
+    const res = await fetch('YOUR_RECEIVER_URL', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ event: 'Event: 10', heat: 'Heat: 2' }),
+      redirect: 'follow'
+    });
+    console.log(res.status, await res.text());
+    ```
+
+
 ## 🚀 Automation Workflow
 
 ### Creating a New Meet
