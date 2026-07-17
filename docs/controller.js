@@ -43,7 +43,7 @@
     };
 
     // Detect Environment
-    if (window.__TAURI_INTERNALS__ || window.__TAURI__) {
+    if (window.__TAURI__ && window.__TAURI__.core) {
         state.isTauri = true;
         elements.environmentIndicator.textContent = "Desktop Mode";
         elements.environmentIndicator.className = "text-xs px-2.5 py-0.5 rounded-full font-semibold bg-emerald-900/40 text-emerald-300 border border-emerald-800/40";

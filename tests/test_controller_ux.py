@@ -128,3 +128,34 @@ def test_controller_config_modal(page: Page):
     # Verify settings persisted in localStorage
     saved_url = page.evaluate("localStorage.getItem('G_WEB_APP_URL')")
     assert saved_url == "https://script.google.com/macros/s/TEST_URL/exec"
+
+def test_tauri_internals_without_global_tauri_fallback(page: Page):
+    errors = []
+    page.on("pageerror", lambda err: errors.append(err))
+
+    # Mock network requests to Google Apps Script to isolate test execution
+    page.route("https://script.google.com/**", lambda route: route.fulfill(
+        status=200,
+        content_type="application/json",
+        body='{"status":"success"}'
+    ))
+
+    # Simulate Tauri environment detection trigger, but __TAURI__ undefined
+    page.add_init_script("""
+        window.__TAURI_INTERNALS__ = {};
+        window.__TAURI__ = undefined;
+    """)
+    controller_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "../docs/controller.html"))
+    page.goto(f"file:///{controller_path}")
+
+    # Set mock URL to trigger sync path on save
+    page.click("#header-config-btn")
+    page.fill("#web-app-url-input", "https://script.google.com/macros/s/TEST_URL/exec")
+    page.click("#save-config-btn")
+
+    # Wait for async operation to run
+    page.wait_for_timeout(500)
+
+    # The sync status should not fail with the TypeError about undefined 'core'
+    expect(page.locator("#sync-status-text")).not_to_contain_text("Cannot read properties")
+    assert not errors, f"Uncaught page errors occurred: {errors}"
