@@ -1,0 +1,168 @@
+name: Scoreboard Sync Release Pipeline
+
+on:
+  push:
+    branches: [ main ]
+    tags: [ 'v*' ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: Run Playwright E2E Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Install UV and dependencies
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+          uv pip install --system -e .
+          uv pip install --system pytest playwright pytest-playwright
+
+      - name: Install Playwright Browsers
+        run: uv run playwright install --with-deps chromium
+
+      - name: Run Pytest Suite
+        run: uv run pytest
+
+  build-desktop:
+    name: Build Tauri Desktop Client
+    needs: test
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            platform: macos
+            artifact_pattern: "src-tauri/target/release/bundle/dmg/*.dmg"
+          - os: windows-latest
+            platform: windows
+            artifact_pattern: "src-tauri/target/release/bundle/msi/*.msi"
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install Node Dependencies
+        run: npm ci
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Rust Cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: "./src-tauri -> target"
+
+      - name: Build Tauri App
+        run: npx tauri build
+
+      - name: Upload Build Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: mmtools-desktop-${{ matrix.platform }}
+          path: ${{ matrix.artifact_pattern }}
+
+  build-ahk:
+    name: Build AHK Script
+    needs: test
+    runs-on: windows-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Build with AHK v2
+        uses: benmusson/ahk2exe-action@v1
+        with:
+          in: DolphinScoreboardSync.ahk
+          out: DolphinScoreboardSync.exe
+          ahk-tag: v2.0.11
+
+      - name: Create Release Bundle
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Path "DolphinSync-Windows-v1"
+          Copy-Item "DolphinScoreboardSync.exe" "DolphinSync-Windows-v1/"
+          Copy-Item "config.json.example" "DolphinSync-Windows-v1/"
+          Copy-Item "ReleaseInstructions.txt" "DolphinSync-Windows-v1/README.txt"
+          Compress-Archive -Path "DolphinSync-Windows-v1/*" -DestinationPath "DolphinScoreboardSync-Windows.zip"
+
+      - name: Upload AHK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: DolphinScoreboardSync-ZIP
+          path: DolphinScoreboardSync-Windows.zip
+
+  publish-release:
+    name: Publish Release to GitHub
+    needs: [build-desktop, build-ahk]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Download macOS Desktop Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: mmtools-desktop-macos
+          path: ./macos-binaries
+
+      - name: Download Windows Desktop Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: mmtools-desktop-windows
+          path: ./windows-binaries
+
+      - name: Download AHK ZIP Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: DolphinScoreboardSync-ZIP
+          path: ./ahk-binaries
+
+      - name: Rename and Package binaries
+        run: |
+          mkdir -p release-pack
+          find ./macos-binaries -name "*.dmg" -exec cp {} ./release-pack/MM-Scoreboard-Controller-macOS.dmg \;
+          find ./windows-binaries -name "*.msi" -exec cp {} ./release-pack/MM-Scoreboard-Controller-Windows.msi \;
+          find ./ahk-binaries -name "*.zip" -exec cp {} ./release-pack/DolphinScoreboardSync-Windows.zip \;
+
+      - name: Publish Prerelease (push to main)
+        if: github.ref == 'refs/heads/main'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release delete latest --yes || true
+          gh api -X DELETE /repos/${{ github.repository }}/git/refs/tags/latest || true
+          gh release create latest \
+            --title "Latest Pre-release Build" \
+            --notes "Automated release compiled on the latest main branch commit." \
+            --prerelease \
+            ./release-pack/*
+
+      - name: Publish Full Release (v* Tags)
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create ${{ github.ref_name }} \
+            --title "Release ${{ github.ref_name }}" \
+            --notes "Scoreboard Sync suite release version ${{ github.ref_name }}." \
+            ./release-pack/*

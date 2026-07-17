@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SwimMeet Scoreboard Sync - Download Hub</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800&family=Inter:wght@300;400;600;700&display=swap');
+
+        :root {
+            --bg-color: #08090c;
+            --accent-primary: #ffd700;
+            --accent-secondary: #00f0ff;
+            --card-bg: rgba(255, 255, 255, 0.02);
+            --card-border: rgba(255, 255, 255, 0.05);
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: #f3f4f6;
+            font-family: 'Inter', sans-serif;
+            background-image: 
+                radial-gradient(circle at 10% 20%, rgba(255, 215, 0, 0.03) 0%, transparent 40%),
+                radial-gradient(circle at 90% 80%, rgba(0, 240, 255, 0.03) 0%, transparent 40%);
+        }
+
+        .heading-font {
+            font-family: 'Outfit', sans-serif;
+        }
+
+        .glass-card {
+            background: var(--card-bg);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--card-border);
+            border-radius: 1.5rem;
+            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .glass-card:hover {
+            transform: translateY(-4px);
+            border-color: rgba(255, 255, 255, 0.1);
+            background: rgba(255, 255, 255, 0.04);
+            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.4);
+        }
+
+        .btn-gradient {
+            background: linear-gradient(135deg, var(--accent-primary) 0%, #ff8c00 100%);
+            color: #000;
+            transition: all 0.3s ease;
+        }
+
+        .btn-gradient:hover {
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.4);
+            transform: scale(1.02);
+        }
+
+        .btn-outline {
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            background: rgba(255, 255, 255, 0.02);
+            transition: all 0.3s ease;
+        }
+
+        .btn-outline:hover {
+            background: rgba(255, 255, 255, 0.08);
+            border-color: rgba(255, 255, 255, 0.3);
+        }
+
+        .pill {
+            background: rgba(255, 215, 0, 0.1);
+            border: 1px solid rgba(255, 215, 0, 0.2);
+            color: var(--accent-primary);
+        }
+    </style>
+</head>
+
+<body class="min-h-screen flex flex-col justify-between">
+    <!-- Navbar -->
+    <header class="w-full max-w-7xl mx-auto py-6 px-6 flex justify-between items-center">
+        <div class="flex items-center gap-3">
+            <span class="text-2xl font-bold tracking-wide heading-font">
+                <span class="text-[var(--accent-primary)]">⚡</span> SwimMeet Sync
+            </span>
+        </div>
+        <div class="flex gap-4">
+            <a href="index.html" class="text-sm font-semibold text-gray-400 hover:text-white transition">Viewer Board</a>
+            <a href="https://github.com/pfisherogden/SwimMeet-CurrentEventSync" class="text-sm font-semibold text-gray-400 hover:text-white transition">GitHub</a>
+        </div>
+    </header>
+
+    <!-- Main Content Hero -->
+    <main class="max-w-6xl mx-auto px-6 py-12 flex-1 flex flex-col justify-center items-center text-center">
+        <div class="inline-flex items-center gap-2 pill px-4 py-1.5 rounded-full text-xs font-semibold tracking-wider uppercase mb-6">
+            ✨ Season Championships Edition
+        </div>
+        
+        <h1 class="text-4xl md:text-6xl font-black heading-font tracking-tight leading-tight max-w-3xl">
+            Control & Synchronize Your <span class="bg-clip-text text-transparent bg-gradient-to-r from-[var(--accent-primary)] to-[#ff8c00]">Swim Meet Scoreboard</span>
+        </h1>
+        
+        <p class="text-gray-400 text-base md:text-xl max-w-2xl mt-6 leading-relaxed">
+            Ensure parents, swimmers, and volunteers stay in sync. Broadcast the active Event and Heat numbers live from the timing booth to the mobile viewer board.
+        </p>
+
+        <!-- Product Downloads Grid -->
+        <section class="grid grid-cols-1 md:grid-cols-3 gap-8 w-full max-w-5xl mt-16 text-left">
+            
+            <!-- Card 1: Scoreboard Controller Desktop App -->
+            <div class="glass-card p-6 flex flex-col justify-between">
+                <div>
+                    <div class="text-2xl mb-4">💻</div>
+                    <h3 class="text-xl font-bold heading-font">Scoreboard Controller</h3>
+                    <p class="text-gray-400 text-xs mt-1.5">Desktop App</p>
+                    <p class="text-gray-400 text-sm mt-4 leading-relaxed">
+                        Native desktop tool to manually adjust and advance the scoreboard schedule. Loads your <b>events.csv</b> and config files automatically on launch.
+                    </p>
+                </div>
+                <div class="mt-8 flex flex-col gap-3">
+                    <a href="https://github.com/pfisherogden/SwimMeet-CurrentEventSync/releases/download/latest/MM-Scoreboard-Controller-Windows.msi" class="w-full py-2.5 rounded-xl btn-gradient font-bold text-center text-sm">
+                        Download for Windows (.msi)
+                    </a>
+                    <a href="https://github.com/pfisherogden/SwimMeet-CurrentEventSync/releases/download/latest/MM-Scoreboard-Controller-macOS.dmg" class="w-full py-2.5 rounded-xl btn-outline font-bold text-center text-sm text-gray-300">
+                        Download for macOS (.dmg)
+                    </a>
+                </div>
+            </div>
+
+            <!-- Card 2: Scoreboard Controller Web App -->
+            <div class="glass-card p-6 flex flex-col justify-between">
+                <div>
+                    <div class="text-2xl mb-4">🌐</div>
+                    <h3 class="text-xl font-bold heading-font">Scoreboard Controller</h3>
+                    <p class="text-gray-400 text-xs mt-1.5">Web Application</p>
+                    <p class="text-gray-400 text-sm mt-4 leading-relaxed">
+                        Control the board from any mobile device, tablet, or secondary browser. Load files manually and sync instantly over the internet.
+                    </p>
+                </div>
+                <div class="mt-8">
+                    <a href="controller.html" class="block w-full py-2.5 rounded-xl btn-gradient font-bold text-center text-sm">
+                        Launch Web Controller
+                    </a>
+                </div>
+            </div>
+
+            <!-- Card 3: Dolphin Automatic Scraper -->
+            <div class="glass-card p-6 flex flex-col justify-between">
+                <div>
+                    <div class="text-2xl mb-4">🤖</div>
+                    <h3 class="text-xl font-bold heading-font">Dolphin Auto-Sync</h3>
+                    <p class="text-gray-400 text-xs mt-1.5">AutoHotkey Windows Script</p>
+                    <p class="text-gray-400 text-sm mt-4 leading-relaxed">
+                        Scrapes Event and Heat info directly from Colorado Timing Systems Dolphin50.exe in real time, requiring zero human intervention.
+                    </p>
+                </div>
+                <div class="mt-8">
+                    <a href="https://github.com/pfisherogden/SwimMeet-CurrentEventSync/releases/download/latest/DolphinScoreboardSync-Windows.zip" class="block w-full py-2.5 rounded-xl btn-outline font-bold text-center text-sm text-gray-300">
+                        Download AHK Package (.zip)
+                    </a>
+                </div>
+            </div>
+
+        </section>
+
+        <!-- Quick Integration Guide -->
+        <section class="w-full max-w-3xl mt-20 text-left border-t border-gray-800/80 pt-12">
+            <h3 class="text-2xl font-bold heading-font mb-6 text-center">How It Works</h3>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 text-center">
+                <div class="p-4">
+                    <div class="w-10 h-10 rounded-full bg-gray-800 text-[var(--accent-primary)] font-bold flex items-center justify-center mx-auto text-lg mb-4">1</div>
+                    <h4 class="font-bold mb-2">Configure</h4>
+                    <p class="text-gray-400 text-xs leading-relaxed">Input your spreadsheet Web App URL into the settings.</p>
+                </div>
+                <div class="p-4">
+                    <div class="w-10 h-10 rounded-full bg-gray-800 text-[var(--accent-primary)] font-bold flex items-center justify-center mx-auto text-lg mb-4">2</div>
+                    <h4 class="font-bold mb-2">Broadcaster</h4>
+                    <p class="text-gray-400 text-xs leading-relaxed">Use the desktop app, web app, or AHK to send updates.</p>
+                </div>
+                <div class="p-4">
+                    <div class="w-10 h-10 rounded-full bg-gray-800 text-[var(--accent-primary)] font-bold flex items-center justify-center mx-auto text-lg mb-4">3</div>
+                    <h4 class="font-bold mb-2">Display Board</h4>
+                    <p class="text-gray-400 text-xs leading-relaxed">Parents scan the QR code to watch the active event in real time.</p>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="w-full py-6 text-center text-xs text-gray-600 border-t border-gray-900 mt-12 bg-black/20">
+        <p>© 2026 SwimMeet Current Event Sync. Built for TVSL Summer Swim Seasons. Open source under MIT.</p>
+    </footer>
+</body>
+
+</html>
