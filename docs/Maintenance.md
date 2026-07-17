@@ -18,17 +18,19 @@ The integration test suite verifies the end-to-end flow: creating a spreadsheet,
 Follow the [Authentication Setup Guide](./AuthSetup.md) to ensure your `credentials.json` and `token.json` are present in the project root.
 
 ### 2. Run the Tests
-Execute the following command:
+Execute the following command to run both the Google Sheets integration script and the Playwright controller interface E2E UI test suites:
 ```bash
 just test
 ```
 
-### 3. What the test does:
-- Creates a temporary spreadsheet in your Google Drive.
-- Creates a temporary 5-column **Master Sheet** to test redirector logic.
-- Verifies that the app has correct permissions (using the restricted `drive.file` scope).
-- Performs a **Live Ping** to ensure the deployed cloud code is reachable.
-- Cleans up by trashing all created files after the test completes.
+Or, to execute only the local controller browser UI E2E tests:
+```bash
+just test-e2e
+```
+
+### 3. What the tests do:
+- **Sheets Integration**: Creates a temporary spreadsheet and Master Sheet in Google Drive, deploys the apps script, validates restricted scopes (`drive.file`), pings the receiver, and trashes resources on cleanup.
+- **Controller UI E2E**: Launches the controller interface in a headless browser, verifies manual Event/Heat increments and decrements, parses a CP1252 CSV schedule, and checks sequence advancing and rewinding behaviors.
 
 ## 🧪 Manual Web App Verification
 When manually verification/testing the deployed **Receiver Web App** via HTTP POST, you must handle Google Apps Script's redirect behavior properly. 
@@ -66,19 +68,27 @@ The script will output the **Spreadsheet ID** and the **Web App URL**.
 
 ## 📦 Distribution & Releases
 
-The Windows AutoHotkey executable (`.exe`) is automatically compiled and published using GitHub Actions on a Windows runner.
+All broadcaster client formats (AHK executable, macOS DMG installer, and Windows MSI installer) are automatically compiled, tested, and published to GitHub Releases by our CI/CD pipeline whenever a new version tag `v*` is pushed.
 
-### Technical Note: AHK v2 Compilation
-This project uses **AutoHotkey v2**. In the CI environment, we use the verified `benmusson/ahk2exe-action@v1` to handle the v2-specific compilation requirements. 
+### Local Development & Compilation (Tauri Desktop App)
+You can run, compile, or build the Scoreboard Controller locally using the project's standardized `just` targets:
+*   **Run Developer Desktop Mode**: Launches the Tauri client with live hot-reloading from your static files:
+    ```bash
+    just dev-desktop
+    ```
+*   **Build Production Installer Packages**: Generates optimized local installation binaries (`.dmg` or `.msi` depending on your host OS) under `src-tauri/target/release/bundle/`:
+    ```bash
+    just build-desktop
+    ```
 
-### To Create a New Version:
-1. Commit your changes to `main`.
-2. Create and push a version tag:
+### To Create a New Version Release:
+1. Commit and push all changes to the `main` branch.
+2. Tag the release and push it to GitHub:
    ```bash
-   git tag v1.0.1
-   git push origin v1.0.1
+   git tag v1.0.0
+   git push origin v1.0.0
    ```
-3. GitHub will trigger a build and create a new entry in the **Releases** tab with the compiled EXE attached.
+3. GitHub Actions will automatically run the E2E test suite, package all client distributions, and create a new public release entry.
 
 ## 🔒 Security Reminders
 - Never commit `credentials.json`, `token.json`, or `config.json`.
