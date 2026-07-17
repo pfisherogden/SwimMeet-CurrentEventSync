@@ -66,35 +66,35 @@ def test_controller_csv_sequence_stepping(page: Page):
         expect(page.locator("#active-event-heats")).to_have_text("Active Heat 1 of 2 Heats")
 
         # 1. Step Next Heat (Event 1, Heat 1 -> Event 1, Heat 2)
-        page.click("#next-heat-seq-btn")
+        page.click("#heat-inc")
         expect(page.locator("#event-val")).to_have_text("1")
         expect(page.locator("#heat-val")).to_have_text("2")
         expect(page.locator("#active-event-heats")).to_have_text("Active Heat 2 of 2 Heats")
 
         # 2. Step Next Heat (Event 1, Heat 2 -> Event 2, Heat 1 - Event 1 has 2 heats max)
-        page.click("#next-heat-seq-btn")
+        page.click("#heat-inc")
         expect(page.locator("#event-val")).to_have_text("2")
         expect(page.locator("#heat-val")).to_have_text("1")
         expect(page.locator("#active-event-title")).to_have_text("Event 2: BOYS 8&U 100 MEDLEY RELAY")
 
         # 3. Step Next Heat (Event 2, Heat 1 -> Event 3, Heat 1 - Event 2 has 1 heat max)
-        page.click("#next-heat-seq-btn")
+        page.click("#heat-inc")
         expect(page.locator("#event-val")).to_have_text("3")
         expect(page.locator("#heat-val")).to_have_text("1")
         expect(page.locator("#active-event-title")).to_have_text("Event 3: GIRLS 9-10 100 MEDLEY RELAY")
 
         # 4. Step Prev Heat (Event 3, Heat 1 -> Event 2, Heat 1)
-        page.click("#prev-heat-seq-btn")
+        page.click("#heat-dec")
         expect(page.locator("#event-val")).to_have_text("2")
         expect(page.locator("#heat-val")).to_have_text("1")
 
         # 5. Step Prev Heat (Event 2, Heat 1 -> Event 1, Heat 2)
-        page.click("#prev-heat-seq-btn")
+        page.click("#heat-dec")
         expect(page.locator("#event-val")).to_have_text("1")
         expect(page.locator("#heat-val")).to_have_text("2")
 
         # 6. Step Next Event directly (Event 1 -> Event 2)
-        page.click("#next-event-seq-btn")
+        page.click("#event-inc")
         expect(page.locator("#event-val")).to_have_text("2")
         expect(page.locator("#heat-val")).to_have_text("1")
 

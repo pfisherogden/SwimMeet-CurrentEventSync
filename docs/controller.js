@@ -22,10 +22,6 @@
         eventInc: document.getElementById('event-inc'),
         heatDec: document.getElementById('heat-dec'),
         heatInc: document.getElementById('heat-inc'),
-        prevHeatSeqBtn: document.getElementById('prev-heat-seq-btn'),
-        nextHeatSeqBtn: document.getElementById('next-heat-seq-btn'),
-        prevEventSeqBtn: document.getElementById('prev-event-seq-btn'),
-        nextEventSeqBtn: document.getElementById('next-event-seq-btn'),
         activeEventTitle: document.getElementById('active-event-title'),
         activeEventHeats: document.getElementById('active-event-heats'),
         environmentIndicator: document.getElementById('environment-indicator'),
@@ -123,17 +119,11 @@
 
     // Setup DOM Listeners
     function setupEventListeners() {
-        // Manual increment/decrement buttons
-        elements.eventDec.addEventListener('click', () => adjustEvent(-1));
-        elements.eventInc.addEventListener('click', () => adjustEvent(1));
-        elements.heatDec.addEventListener('click', () => adjustHeat(-1));
-        elements.heatInc.addEventListener('click', () => adjustHeat(1));
-
-        // Sequence buttons
-        elements.prevHeatSeqBtn.addEventListener('click', () => stepHeat(-1));
-        elements.nextHeatSeqBtn.addEventListener('click', () => stepHeat(1));
-        elements.prevEventSeqBtn.addEventListener('click', () => stepEvent(-1));
-        elements.nextEventSeqBtn.addEventListener('click', () => stepEvent(1));
+        // Manual and sequence-aware increment/decrement buttons
+        elements.eventDec.addEventListener('click', () => stepEvent(-1));
+        elements.eventInc.addEventListener('click', () => stepEvent(1));
+        elements.heatDec.addEventListener('click', () => stepHeat(-1));
+        elements.heatInc.addEventListener('click', () => stepHeat(1));
 
         // Configuration Modal
         elements.headerConfigBtn.addEventListener('click', openConfigModal);
