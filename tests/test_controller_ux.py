@@ -159,3 +159,33 @@ def test_tauri_internals_without_global_tauri_fallback(page: Page):
     # The sync status should not fail with the TypeError about undefined 'core'
     expect(page.locator("#sync-status-text")).not_to_contain_text("Cannot read properties")
     assert not errors, f"Uncaught page errors occurred: {errors}"
+
+def test_toast_dismissal_on_click(page: Page):
+    controller_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "../docs/controller.html"))
+    page.goto(f"file:///{controller_path}")
+
+    # Set mock CSV input content to trigger toast
+    mock_csv = "1,GIRLS 8&U 100 MEDLEY RELAY,2,1,A\n"
+    csv_file_path = os.path.join(os.path.dirname(__file__), "mock_toast_events.csv")
+    with open(csv_file_path, "w") as f:
+        f.write(mock_csv)
+
+    try:
+        with page.expect_file_chooser() as fc_info:
+            page.click("#file-uploader-container label")
+        file_chooser = fc_info.value
+        file_chooser.set_files(csv_file_path)
+
+        # Confirm toast is visible
+        toast_selector = "#toast-container div"
+        expect(page.locator(toast_selector)).to_be_visible()
+
+        # Click on the toast element to dismiss it
+        page.click(toast_selector)
+
+        # Confirm toast is immediately removed from DOM
+        expect(page.locator(toast_selector)).to_have_count(0)
+
+    finally:
+        if os.path.exists(csv_file_path):
+            os.remove(csv_file_path)
