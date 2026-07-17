@@ -570,7 +570,14 @@
         if (!container) return;
 
         const toast = document.createElement('div');
-        toast.className = `toast-slide-in px-4 py-3 rounded-xl border font-semibold text-sm shadow-2xl flex items-center gap-2 pointer-events-auto transition ${
+        
+        // Accessibility attributes
+        toast.tabIndex = 0;
+        toast.setAttribute('role', type === 'error' ? 'alert' : 'status');
+        toast.setAttribute('aria-live', type === 'error' ? 'assertive' : 'polite');
+        toast.setAttribute('aria-label', `${type === 'error' ? 'Error' : 'Notification'}: ${message}. Press Enter or Space to dismiss.`);
+
+        toast.className = `toast-slide-in px-4 py-3 rounded-xl border font-semibold text-sm shadow-2xl flex items-center gap-2 pointer-events-auto cursor-pointer select-none hover:opacity-90 active:scale-95 focus:outline-none focus:ring-2 focus:ring-yellow-500 transition duration-150 ease-in-out ${
             type === 'success' ? 'bg-green-950/90 text-green-300 border-green-800/80' :
             type === 'error' ? 'bg-red-950/90 text-red-300 border-red-800/80' :
             'bg-gray-900/90 text-gray-200 border-gray-800'
@@ -581,10 +588,30 @@
         
         container.appendChild(toast);
         
-        setTimeout(() => {
-            toast.classList.add('opacity-0');
+        let dismissTimeout = null;
+
+        const dismiss = () => {
+            if (dismissTimeout) clearTimeout(dismissTimeout);
+            toast.style.pointerEvents = 'none'; // Prevent double interactions
+            toast.classList.add('opacity-0', 'scale-95');
             toast.addEventListener('transitionend', () => toast.remove());
-        }, 3500);
+        };
+
+        // Auto-dismiss ONLY for success/info; error notifications are persistent
+        if (type !== 'error') {
+            dismissTimeout = setTimeout(dismiss, 3500);
+        }
+
+        // Mouse and touch dismiss
+        toast.addEventListener('click', dismiss);
+
+        // Keyboard dismiss (Enter / Space)
+        toast.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                dismiss();
+            }
+        });
     }
 
     // Flash visual feedback on large value display containers
