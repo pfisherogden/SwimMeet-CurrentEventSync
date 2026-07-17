@@ -82,6 +82,18 @@
                 state.eventsList = JSON.parse(savedEventsList);
                 renderEventsList();
             }
+
+            // Load Outdoor Mode settings
+            const savedOutdoor = localStorage.getItem('outdoorMode') === 'true';
+            if (savedOutdoor) {
+                document.body.classList.add('outdoor-mode');
+                const btn = document.getElementById('outdoor-mode-btn');
+                if (btn) {
+                    btn.textContent = '🌑 Normal Mode';
+                    btn.classList.add('bg-white', 'text-black', 'border-black');
+                    btn.classList.remove('text-gray-300', 'border-gray-700');
+                }
+            }
         } catch (e) {
             console.error("Failed to load local storage configurations", e);
         }
@@ -128,8 +140,19 @@
         elements.closeModalBtn.addEventListener('click', closeConfigModal);
         elements.saveConfigBtn.addEventListener('click', saveConfiguration);
 
+        const testConfigBtn = document.getElementById('test-config-btn');
+        if (testConfigBtn) {
+            testConfigBtn.addEventListener('click', testWebAppConnection);
+        }
+
         // CSV File Loading (Web Mode)
         elements.csvFileInput.addEventListener('change', handleWebCsvUpload);
+
+        // Outdoor Mode Toggle
+        const outdoorBtn = document.getElementById('outdoor-mode-btn');
+        if (outdoorBtn) {
+            outdoorBtn.addEventListener('click', toggleOutdoorMode);
+        }
     }
 
     // State Adjustments
@@ -151,6 +174,7 @@
         }
     }
 
+    // Adjust Heat manually
     function adjustHeat(delta) {
         let newHeat = state.heat + delta;
         if (newHeat < 1) newHeat = 1;
@@ -326,9 +350,10 @@
                 }
                 
                 onStateChanged();
+                showToast(`Successfully loaded ${list.length} events!`, "success");
             }
         } catch (e) {
-            alert("Failed to parse events.csv: " + e.message);
+            showToast("Failed to parse events.csv: " + e.message, "error");
         }
     }
 
@@ -381,13 +406,21 @@
         elements.configModal.classList.remove('hidden');
     }
 
+    // Close Settings Modal
     function closeConfigModal() {
         elements.configModal.classList.add('hidden');
     }
 
+    // Save and validate configurations
     function saveConfiguration() {
         const url = elements.webAppUrlInput.value.trim();
         const auto = elements.autoSyncCheckbox.checked;
+
+        // Validate URL format for Google Apps Script Web App
+        if (url && !url.match(/^https:\/\/script\.google\.com\/macros\/s\/[A-Za-z0-9_-]+\/exec$/)) {
+            showToast("Invalid URL! Must be a deployed Google Sheets Apps Script Web App URL.", "error");
+            return;
+        }
 
         state.config.G_WEB_APP_URL = url;
         state.config.autoSync = auto;
@@ -419,13 +452,13 @@
     async function syncToGoogleSheets() {
         const url = state.config.G_WEB_APP_URL;
         if (!url || url === 'PASTE_YOUR_URL_HERE') {
-            elements.syncStatusDot.className = "w-3.5 h-3.5 rounded-full bg-yellow-500 shadow-[0_0_8px_rgba(234,179,8,0.5)]";
+            elements.syncStatusDot.className = "w-4 h-4 rounded-full bg-yellow-500 shadow-[0_0_8px_rgba(234,179,8,0.5)]";
             elements.syncStatusText.textContent = "URL Unconfigured";
             return;
         }
 
         state.syncing = true;
-        elements.syncStatusDot.className = "w-3.5 h-3.5 rounded-full bg-yellow-500 shadow-[0_0_8px_rgba(234,179,8,0.5)] syncing-pulse";
+        elements.syncStatusDot.className = "w-4 h-4 rounded-full bg-yellow-500 shadow-[0_0_8px_rgba(234,179,8,0.5)] syncing-pulse";
         elements.syncStatusText.textContent = "Syncing...";
 
         const eventStr = `Event: ${state.event}`;
@@ -448,8 +481,6 @@
             } else {
                 // Standard cross-origin fetch with no-cors.
                 // mode: 'no-cors' allows sending POST requests to script.google.com without preflight blocks.
-                // However, the browser won't let us read the status code (opaque response), so we handle it 
-                // as success if the promise doesn't throw.
                 await fetch(url, {
                     method: 'POST',
                     mode: 'no-cors',
@@ -470,13 +501,115 @@
     }
 
     function setSyncSuccess() {
-        elements.syncStatusDot.className = "w-3.5 h-3.5 rounded-full bg-[var(--neon-green)] shadow-[0_0_8px_rgba(57,255,20,0.5)]";
+        elements.syncStatusDot.className = "w-4 h-4 rounded-full bg-[var(--neon-green)] shadow-[0_0_8px_rgba(57,255,20,0.5)]";
         elements.syncStatusText.textContent = "Synced";
+        flashValueCards('success');
     }
 
     function setSyncError(message) {
-        elements.syncStatusDot.className = "w-3.5 h-3.5 rounded-full bg-[var(--neon-red)] shadow-[0_0_8px_rgba(255,51,51,0.5)]";
+        elements.syncStatusDot.className = "w-4 h-4 rounded-full bg-[var(--neon-red)] shadow-[0_0_8px_rgba(255,51,51,0.5)]";
         elements.syncStatusText.textContent = "Sync Fail: " + message;
+        flashValueCards('error');
+        showToast("Sync failed: " + message, "error");
+    }
+
+    // Toggle Outdoor High-Contrast Mode
+    function toggleOutdoorMode() {
+        const body = document.body;
+        const btn = document.getElementById('outdoor-mode-btn');
+        if (!btn) return;
+        
+        body.classList.toggle('outdoor-mode');
+        const isOutdoor = body.classList.contains('outdoor-mode');
+        localStorage.setItem('outdoorMode', isOutdoor);
+        
+        if (isOutdoor) {
+            btn.textContent = '🌑 Normal Mode';
+            btn.classList.add('bg-white', 'text-black', 'border-black');
+            btn.classList.remove('text-gray-300', 'border-gray-700');
+        } else {
+            btn.textContent = '☀️ Outdoor Mode';
+            btn.classList.remove('bg-white', 'text-black', 'border-black');
+            btn.classList.add('text-gray-300', 'border-gray-700');
+        }
+    }
+
+    // Validate and test Apps Script endpoint connection
+    async function testWebAppConnection() {
+        const url = elements.webAppUrlInput.value.trim();
+        if (!url) {
+            showToast("Please enter a URL first", "error");
+            return;
+        }
+        
+        if (!url.match(/^https:\/\/script\.google\.com\/macros\/s\/[A-Za-z0-9_-]+\/exec$/)) {
+            showToast("Invalid URL format!", "error");
+            return;
+        }
+        
+        const testBtn = document.getElementById('test-config-btn');
+        const originalText = testBtn.textContent;
+        testBtn.textContent = "Testing...";
+        testBtn.disabled = true;
+
+        try {
+            // Send an opaque GET request as validation
+            await fetch(url, { method: 'GET', mode: 'no-cors' });
+            showToast("Test connection request transmitted successfully!", "success");
+        } catch (err) {
+            showToast("Connection test failed: " + err.message, "error");
+        } finally {
+            testBtn.textContent = originalText;
+            testBtn.disabled = false;
+        }
+    }
+
+    // Show non-blocking notifications
+    function showToast(message, type = 'info') {
+        const container = document.getElementById('toast-container');
+        if (!container) return;
+
+        const toast = document.createElement('div');
+        toast.className = `toast-slide-in px-4 py-3 rounded-xl border font-semibold text-sm shadow-2xl flex items-center gap-2 pointer-events-auto transition ${
+            type === 'success' ? 'bg-green-950/90 text-green-300 border-green-800/80' :
+            type === 'error' ? 'bg-red-950/90 text-red-300 border-red-800/80' :
+            'bg-gray-900/90 text-gray-200 border-gray-800'
+        }`;
+        
+        const icon = type === 'success' ? '✅' : type === 'error' ? '❌' : 'ℹ️';
+        toast.innerHTML = `<span>${icon}</span> <span>${message}</span>`;
+        
+        container.appendChild(toast);
+        
+        setTimeout(() => {
+            toast.classList.add('opacity-0');
+            toast.addEventListener('transitionend', () => toast.remove());
+        }, 3500);
+    }
+
+    // Flash visual feedback on large value display containers
+    function flashValueCards(type) {
+        const valCards = document.querySelectorAll('#event-val, #heat-val');
+        valCards.forEach(card => {
+            const container = card.closest('div');
+            if (container) {
+                if (type === 'success') {
+                    container.classList.add('border-green-500', 'shadow-[0_0_15px_rgba(34,197,94,0.4)]');
+                    container.classList.remove('border-gray-800');
+                    setTimeout(() => {
+                        container.classList.remove('border-green-500', 'shadow-[0_0_15px_rgba(34,197,94,0.4)]');
+                        container.classList.add('border-gray-800');
+                    }, 800);
+                } else {
+                    container.classList.add('border-red-500', 'shadow-[0_0_15px_rgba(239,68,68,0.4)]');
+                    container.classList.remove('border-gray-800');
+                    setTimeout(() => {
+                        container.classList.remove('border-red-500', 'shadow-[0_0_15px_rgba(239,68,68,0.4)]');
+                        container.classList.add('border-gray-800');
+                    }, 1200);
+                }
+            }
+        });
     }
 
     // Run on startup

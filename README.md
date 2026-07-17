@@ -25,7 +25,7 @@ The script will output your **Spreadsheet URL**, **Receiver URL**, and **Permane
 ### 3. Setup the Broadcaster Client
 To sync active events and heats to your Google Sheet:
 *   **Automatic Scraper (Dolphin Timing Booth)**: Visit the [Download Hub](https://pfisherogden.github.io/SwimMeet-CurrentEventSync/download.html) to get the `DolphinScoreboardSync-Windows.zip`. Create a `config.json` file in the same folder as the EXE pointing to your `Receiver URL`, and run the EXE while Dolphin is active.
-*   **Manual Controller (Web/Desktop)**: Download the desktop app (macOS DMG or Windows MSI) from the [Download Hub](https://pfisherogden.github.io/SwimMeet-CurrentEventSync/download.html) or run it directly in a mobile/tablet browser by launching the [Web Controller](https://pfisherogden.github.io/SwimMeet-CurrentEventSync/controller.html). Follow the [Scoreboard Controller Guide](docs/ScoreboardController.md) for usage and sequence advancing instructions.
+*   **Manual Controller (Web/Desktop)**: Download the desktop app (macOS DMG or Windows MSI) from the [Download Hub](https://pfisherogden.github.io/SwimMeet-CurrentEventSync/download.html) or run it directly in a mobile/tablet browser by launching the [Web Controller](https://pfisherogden.github.io/SwimMeet-CurrentEventSync/controller.html). For home screen installation and local file loading on iOS and Android devices, see the [Mobile PWA Installation Guide](docs/MobileInstallation.md). Read the [Scoreboard Controller Guide](docs/ScoreboardController.md) for detailed pacing logic rules.
 
 ---
 
