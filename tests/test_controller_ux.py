@@ -260,3 +260,46 @@ def test_mobile_header_fit_and_no_overflow(page: Page):
                document.body.scrollWidth > window.innerWidth;
     }""")
     assert not has_horizontal_overflow, "Header overflow detected on mobile width! Elements are pushing the gear button off-screen."
+
+def test_event_count_badge_contrast(page: Page):
+    controller_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "../docs/controller.html"))
+    csv_file_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "temp_events.csv"))
+
+    csv_content = """Event,Description,Heats
+1,GIRLS 8&U 100 MEDLEY RELAY,2
+2,BOYS 8&U 100 MEDLEY RELAY,1
+"""
+    try:
+        with open(csv_file_path, "w") as f:
+            f.write(csv_content)
+
+        page.goto(f"file:///{controller_path}")
+
+        # Upload the CSV
+        with page.expect_file_chooser() as fc_info:
+            page.click("#file-uploader-container label")
+        file_chooser = fc_info.value
+        file_chooser.set_files(csv_file_path)
+
+        # Confirm badge is visible
+        badge = page.locator("#events-count-badge")
+        expect(badge).to_be_visible()
+
+        # 1. Assert Normal Mode contrast (text-gray-200 should be rgb(229, 231, 235))
+        normal_text_color = badge.evaluate("el => window.getComputedStyle(el).color")
+        assert normal_text_color == "rgb(229, 231, 235)"
+
+        # 2. Toggle Outdoor Contrast Mode
+        page.click("#outdoor-mode-btn")
+        
+        # Assert Outdoor Mode contrast (text color should switch to high contrast dark #111827 / black)
+        outdoor_text_color = badge.evaluate("el => window.getComputedStyle(el).color")
+        assert outdoor_text_color in ["rgb(17, 24, 39)", "rgb(0, 0, 0)"]
+
+        # Assert Outdoor Mode background color is light gray (rgb(243, 244, 246))
+        outdoor_bg_color = badge.evaluate("el => window.getComputedStyle(el).backgroundColor")
+        assert outdoor_bg_color == "rgb(243, 244, 246)"
+
+    finally:
+        if os.path.exists(csv_file_path):
+            os.remove(csv_file_path)
