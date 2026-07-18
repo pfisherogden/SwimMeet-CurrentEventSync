@@ -118,13 +118,24 @@
                     </p>
                 </div>
                 <div class="mt-8 flex flex-col gap-3">
-                    <a href="https://github.com/pfisherogden/SwimMeet-CurrentEventSync/releases/download/latest/MM-Scoreboard-Controller-Windows.msi" class="w-full py-2.5 rounded-xl btn-gradient font-bold text-center text-sm">
+                    <a id="stable-win-link" href="https://github.com/pfisherogden/SwimMeet-CurrentEventSync/releases/download/latest/MM-Scoreboard-Controller-Windows.msi" class="w-full py-2.5 rounded-xl btn-gradient font-bold text-center text-sm">
                         Download for Windows (.msi)
                     </a>
-                    <a href="https://github.com/pfisherogden/SwimMeet-CurrentEventSync/releases/download/latest/MM-Scoreboard-Controller-macOS.dmg" class="w-full py-2.5 rounded-xl btn-outline font-bold text-center text-sm text-gray-300">
+                    <a id="stable-mac-link" href="https://github.com/pfisherogden/SwimMeet-CurrentEventSync/releases/download/latest/MM-Scoreboard-Controller-macOS.dmg" class="w-full py-2.5 rounded-xl btn-outline font-bold text-center text-sm text-gray-300">
                         Download for macOS (.dmg)
                     </a>
-                    <div id="publish-timestamp" class="text-[10px] text-gray-500 text-center mt-1">Last version published: July 17, 2026 at 12:40 PM</div>
+                    <div id="publish-timestamp" class="text-[10px] text-gray-500 text-center mt-1">Last stable version: July 17, 2026 at 12:40 PM</div>
+                    
+                    <!-- Pre-release / Nightly Section -->
+                    <div class="border-t border-gray-800/80 pt-3 mt-1 text-center">
+                        <p class="text-[10px] text-gray-500">Looking for the latest development build?</p>
+                        <div class="flex justify-center gap-3 mt-1.5 text-[10px] font-semibold">
+                            <a id="nightly-win-link" href="https://github.com/pfisherogden/SwimMeet-CurrentEventSync/releases/download/latest/MM-Scoreboard-Controller-Windows.msi" class="text-[var(--accent-secondary)] hover:underline">Windows (.msi)</a>
+                            <span class="text-gray-700">|</span>
+                            <a id="nightly-mac-link" href="https://github.com/pfisherogden/SwimMeet-CurrentEventSync/releases/download/latest/MM-Scoreboard-Controller-macOS.dmg" class="text-[var(--accent-secondary)] hover:underline">macOS (.dmg)</a>
+                        </div>
+                        <div id="nightly-timestamp" class="text-[9px] text-gray-600 mt-1">Latest build: Loading...</div>
+                    </div>
                 </div>
             </div>
 
@@ -195,34 +206,79 @@
     <!-- Dynamic Release Download Links and Timestamp -->
     <script>
         (function() {
-            fetch('https://api.github.com/repos/pfisherogden/SwimMeet-CurrentEventSync/releases')
+            // Helper to format date
+            function formatReleaseDate(dateString) {
+                const date = new Date(dateString);
+                const options = { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' };
+                return date.toLocaleString('en-US', options);
+            }
+
+            // 1. Fetch Latest Stable Release
+            fetch('https://api.github.com/repos/pfisherogden/SwimMeet-CurrentEventSync/releases/latest')
                 .then(res => {
                     if (res.ok) return res.json();
-                    throw new Error('API request failed');
+                    throw new Error('No stable release found');
                 })
+                .then(stable => {
+                    updateStableLinks(stable);
+                })
+                .catch(err => {
+                    console.log('Stable release not found, falling back to newest release', err);
+                    // Fallback: fetch general releases and use the newest one as stable
+                    fetch('https://api.github.com/repos/pfisherogden/SwimMeet-CurrentEventSync/releases')
+                        .then(res => res.json())
+                        .then(releases => {
+                            if (releases && releases.length > 0) {
+                                updateStableLinks(releases[0]);
+                            }
+                        })
+                        .catch(e => console.log('Fallback stable resolution failed', e));
+                });
+
+            function updateStableLinks(stable) {
+                if (stable.published_at) {
+                    const el = document.getElementById('publish-timestamp');
+                    if (el) {
+                        el.textContent = `Last stable version: ${formatReleaseDate(stable.published_at)} (${stable.tag_name})`;
+                    }
+                }
+                if (stable.assets && stable.assets.length > 0) {
+                    stable.assets.forEach(asset => {
+                        if (asset.name.endsWith('.msi')) {
+                            const btn = document.getElementById('stable-win-link');
+                            if (btn) btn.href = asset.browser_download_url;
+                        } else if (asset.name.endsWith('.dmg')) {
+                            const btn = document.getElementById('stable-mac-link');
+                            if (btn) btn.href = asset.browser_download_url;
+                        }
+                    });
+                }
+            }
+
+            // 2. Fetch Latest Nightly / Pre-release Build
+            fetch('https://api.github.com/repos/pfisherogden/SwimMeet-CurrentEventSync/releases')
+                .then(res => res.json())
                 .then(releases => {
                     if (!releases || releases.length === 0) return;
+                    
+                    // Filter or take releases[0] as the absolute latest build
                     const latest = releases[0];
                     
-                    if (latest.published_at) {
-                        const date = new Date(latest.published_at);
-                        const options = { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' };
-                        const formatted = date.toLocaleString('en-US', options);
-                        const el = document.getElementById('publish-timestamp');
-                        if (el) {
-                            el.textContent = `Last version published: ${formatted} (${latest.tag_name})`;
-                        }
+                    const nightlyTimeEl = document.getElementById('nightly-timestamp');
+                    if (nightlyTimeEl && latest.published_at) {
+                        nightlyTimeEl.textContent = `Latest build: ${formatReleaseDate(latest.published_at)} (${latest.tag_name})`;
                     }
                     
                     if (latest.assets && latest.assets.length > 0) {
                         latest.assets.forEach(asset => {
                             if (asset.name.endsWith('.msi')) {
-                                const btn = document.querySelector('a[href*=".msi"]');
+                                const btn = document.getElementById('nightly-win-link');
                                 if (btn) btn.href = asset.browser_download_url;
                             } else if (asset.name.endsWith('.dmg')) {
-                                const btn = document.querySelector('a[href*=".dmg"]');
+                                const btn = document.getElementById('nightly-mac-link');
                                 if (btn) btn.href = asset.browser_download_url;
                             } else if (asset.name.endsWith('.zip')) {
+                                // Dolphin auto sync is generally nightly/main build
                                 const btn = document.querySelector('a[href*=".zip"]');
                                 if (btn) btn.href = asset.browser_download_url;
                             }
