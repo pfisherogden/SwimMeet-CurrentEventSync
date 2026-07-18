@@ -152,8 +152,9 @@ jobs:
           VERSION=$(python -c "import json; print(json.load(open('src-tauri/tauri.conf.json'))['version'])")
           TAG_NAME="v$VERSION-build.${{ github.run_number }}"
           gh release create $TAG_NAME \
-            --title "Release $TAG_NAME" \
-            --notes "Automated release for main branch commit: ${{ github.sha }}" \
+            --title "Pre-release $TAG_NAME" \
+            --notes "Automated pre-release compiled on the latest main branch commit: ${{ github.sha }}" \
+            --prerelease \
             ./release-pack/*
 
       - name: Publish Full Release (v* Tags)
