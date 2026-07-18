@@ -216,6 +216,13 @@
             background-color: #111827 !important;
         }
 
+        /* Event Count Badge in Outdoor Mode */
+        body.outdoor-mode #events-count-badge {
+            background-color: #f3f4f6 !important;
+            border-color: #d1d5db !important;
+            color: #111827 !important;
+        }
+
         /* Tabs in Outdoor Mode */
         body.outdoor-mode #tab-controller,
         body.outdoor-mode #tab-program {
@@ -359,7 +366,7 @@
                 <div class="flex justify-between items-center mb-4 pb-3 border-b border-gray-800 col-span-1">
                     <div class="flex items-center gap-2">
                         <span class="text-sm font-bold text-gray-300">Meet Program Flow</span>
-                        <span id="events-count-badge" class="text-[10px] bg-gray-800 px-2 py-0.5 rounded-full font-bold text-gray-400 hidden">0 Events</span>
+                        <span id="events-count-badge" class="text-[10px] bg-gray-800 border border-gray-700/80 text-gray-200 px-2 py-0.5 rounded-full font-bold hidden">0 Events</span>
                     </div>
                     
                     <!-- File Upload Button -->
