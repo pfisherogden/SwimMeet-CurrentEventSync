@@ -93,6 +93,17 @@ fn publish_status(url: String, payload: String) -> Result<String, String> {
     Ok(text)
 }
 
+#[tauri::command]
+fn publish_status_get(url: String) -> Result<String, String> {
+    let response = ureq::get(&url)
+        .set("User-Agent", "SwimMeet-ScoreboardController/1.0")
+        .call()
+        .map_err(|e| e.to_string())?;
+
+    let text = response.into_string().map_err(|e| e.to_string())?;
+    Ok(text)
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -110,7 +121,8 @@ pub fn run() {
             load_config,
             save_config,
             load_events_csv,
-            publish_status
+            publish_status,
+            publish_status_get
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

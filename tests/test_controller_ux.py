@@ -303,3 +303,93 @@ def test_event_count_badge_contrast(page: Page):
     finally:
         if os.path.exists(csv_file_path):
             os.remove(csv_file_path)
+
+def test_controller_lockout_and_flicker_mitigation(page: Page):
+    import json
+    import time
+    
+    controller_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "../docs/controller.html"))
+    page.goto(f"file:///{controller_path}")
+
+    # Initialize localStorage and mock URL
+    page.evaluate("""() => {
+        localStorage.clear();
+        localStorage.setItem('G_WEB_APP_URL', 'https://script.google.com/macros/s/TEST_LOCKOUT_URL/exec');
+        localStorage.setItem('autoSync', 'true');
+    }""")
+    page.reload()
+
+    # Stub the fetch call using playwright's page.route to capture POSTs and return custom responses
+    post_requests = []
+    
+    def handle_route(route):
+        request = route.request
+        if request.method == "POST":
+            post_requests.append(request.post_data)
+            # Return success with updated state timestamp
+            route.fulfill(
+                status=200,
+                content_type="application/json",
+                body=json.dumps({
+                    "status": "success",
+                    "state": {"event": "2", "heat": "1", "timestamp": int(time.time() * 1000)}
+                })
+            )
+        elif request.method == "GET":
+            # Return stale state (Event 1, Heat 1, old timestamp)
+            route.fulfill(
+                status=200,
+                content_type="application/json",
+                body=json.dumps({
+                    "event": "1",
+                    "heat": "1",
+                    "timestamp": int((time.time() - 10) * 1000)
+                })
+            )
+        else:
+            route.continue_()
+
+    page.route("https://script.google.com/**", handle_route)
+
+    # Verify initial values
+    expect(page.locator("#event-val")).to_have_text("1")
+    expect(page.locator("#heat-val")).to_have_text("1")
+
+    # Increment Event manually (Event: 2, Heat: 1)
+    # This triggers optimistic local update and POSTs update, setting lockout state
+    page.click("#event-inc")
+    expect(page.locator("#event-val")).to_have_text("2")
+
+    # Background poll would normally return Event 1, Heat 1.
+    # We trigger a manual poll run via page.evaluate to simulate a background poll finishing
+    page.evaluate("pollGoogleSheets()")
+
+    # Verify that the value remains at 2 (flicker prevented!)
+    expect(page.locator("#event-val")).to_have_text("2")
+
+    # Now let's trigger a background poll that has a NEWER value (e.g., Event 3, Heat 2)
+    # We simulate this by overriding page.route to return Event 3, Heat 2 with a new timestamp
+    page.route("https://script.google.com/**", lambda route: route.fulfill(
+        status=200,
+        content_type="application/json",
+        body=json.dumps({
+            "event": "3",
+            "heat": "2",
+            "timestamp": int((time.time() + 100) * 1000)
+        })
+    ))
+
+    # Trigger a poll while lockout is active. The controller should pause updating the UI
+    page.evaluate("pollGoogleSheets()")
+    
+    # State should still be Event 2, Heat 1 in the UI because lockout is active
+    expect(page.locator("#event-val")).to_have_text("2")
+    expect(page.locator("#sync-status-text")).to_contain_text("Sync Paused: Update Available")
+
+    # Advance time on the page beyond the 5-second lockout cooldown by clearing the flag
+    page.evaluate("state.isLockedOut = false; pollGoogleSheets();")
+
+    # Now the UI should update to Event 3, Heat 2
+    expect(page.locator("#event-val")).to_have_text("3")
+    expect(page.locator("#heat-val")).to_have_text("2")
+

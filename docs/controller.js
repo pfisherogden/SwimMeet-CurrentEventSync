@@ -11,8 +11,23 @@
             autoSync: true
         },
         isTauri: false,
-        syncing: false
+        syncing: false,
+
+        // Hardened Sync Protocol variables
+        timestamp: 0,
+        lastLocalWriteTimestamp: 0,
+        pendingWriteCount: 0,
+        isOffline: false,
+        isLockedOut: false,
+        pollFailures: 0
     };
+
+    const POLL_INTERVAL_MS = 5000;
+    const LOCKOUT_DURATION_MS = 5000;
+    const TIMEOUT_MS = 4000;
+
+    let pollingTimeoutId = null;
+    let lockoutTimeoutId = null;
 
     // DOM Elements
     const elements = {
@@ -95,6 +110,10 @@
         }
         
         updateUI();
+
+        if (state.config.G_WEB_APP_URL) {
+            startPolling();
+        }
     }
 
     // Load settings from localStorage (Web fallback)
@@ -309,7 +328,7 @@
         }
     }
 
-    // Handles what happens when event/heat changes
+    // Handles what happens when event/heat changes due to local operator action
     function onStateChanged() {
         try {
             localStorage.setItem('currentEvent', state.event);
@@ -319,7 +338,12 @@
         updateUI();
 
         if (state.config.autoSync) {
-            syncToGoogleSheets();
+            const now = Date.now();
+            const expectedTimestamp = state.timestamp;
+            state.lastLocalWriteTimestamp = now;
+            state.timestamp = now; // update local logical clock
+            activateOperatorLockout();
+            syncToGoogleSheets(now, expectedTimestamp);
         }
     }
 
@@ -469,6 +493,8 @@
             return;
         }
 
+        stopPolling();
+
         state.config.G_WEB_APP_URL = url;
         state.config.autoSync = auto;
 
@@ -491,12 +517,17 @@
         closeConfigModal();
         updateUI();
         
-        // Force immediate sync
-        syncToGoogleSheets();
+        // Force immediate sync and restart polling
+        if (state.config.G_WEB_APP_URL) {
+            if (state.config.autoSync) {
+                syncToGoogleSheets();
+            }
+            startPolling();
+        }
     }
 
-    // Submit sync values to sheets
-    async function syncToGoogleSheets() {
+    // Submit sync values to sheets with write-after-read race and conflict mitigation
+    async function syncToGoogleSheets(writeTimestamp = Date.now(), expectedTimestamp = state.timestamp) {
         const url = state.config.G_WEB_APP_URL;
         if (!url || url === 'PASTE_YOUR_URL_HERE') {
             elements.syncStatusDot.className = "w-4 h-4 rounded-full bg-yellow-500 shadow-[0_0_8px_rgba(234,179,8,0.5)]";
@@ -504,52 +535,85 @@
             return;
         }
 
+        state.pendingWriteCount++;
         state.syncing = true;
         elements.syncStatusDot.className = "w-4 h-4 rounded-full bg-yellow-500 shadow-[0_0_8px_rgba(234,179,8,0.5)] syncing-pulse";
         elements.syncStatusText.textContent = "Syncing...";
 
         const eventStr = `Event: ${state.event}`;
         const heatStr = `Heat: ${state.heat}`;
-        const payload = JSON.stringify({ event: eventStr, heat: heatStr });
+        
+        const payload = {
+            event: eventStr,
+            heat: heatStr,
+            timestamp: writeTimestamp,
+            expectedTimestamp: expectedTimestamp
+        };
+
+        const previousState = { event: state.event, heat: state.heat, timestamp: expectedTimestamp };
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS);
 
         try {
+            let resData;
             if (state.isTauri) {
                 // Use Tauri native command to make post request bypasses CORS entirely
                 const resText = await window.__TAURI__.core.invoke('publish_status', { 
                     url: url, 
-                    payload: payload 
+                    payload: JSON.stringify(payload) 
                 });
-                const res = JSON.parse(resText);
-                if (res.status === 'success') {
-                    setSyncSuccess();
-                } else {
-                    setSyncError(res.message || "Failed");
-                }
+                resData = JSON.parse(resText);
             } else {
-                // Standard cross-origin fetch with no-cors.
-                // mode: 'no-cors' allows sending POST requests to script.google.com without preflight blocks.
-                await fetch(url, {
+                // Standard cross-origin fetch with simple content-type to avoid OPTIONS preflight checks
+                const res = await fetch(url, {
                     method: 'POST',
-                    mode: 'no-cors',
+                    mode: 'cors',
+                    credentials: 'omit',
                     headers: {
-                        'Content-Type': 'application/json'
+                        'Content-Type': 'text/plain'
                     },
-                    body: payload
+                    body: JSON.stringify(payload),
+                    signal: controller.signal
                 });
                 
-                // Opaque response, assume success if no networking error thrown
+                if (!res.ok) throw new Error(`HTTP Error: ${res.status}`);
+                resData = await res.json();
+            }
+
+            clearTimeout(timeoutId);
+
+            if (resData.status === 'success' || resData.success) {
+                state.isOffline = false;
+                if (state.timestamp === writeTimestamp) {
+                    state.timestamp = resData.state ? resData.state.timestamp : writeTimestamp;
+                }
                 setSyncSuccess();
+            } else if (resData.code === 409 || resData.status === 'conflict') {
+                handleConflict(payload, resData.currentState, previousState);
+            } else {
+                throw new Error(resData.message || resData.error || "Failed");
             }
         } catch (err) {
+            clearTimeout(timeoutId);
+            state.isOffline = true;
             setSyncError(err.message || "Network Error");
+            
+            // Roll back optimistically if write failed completely
+            if (previousState.timestamp < state.timestamp) {
+                state.event = previousState.event;
+                state.heat = previousState.heat;
+                state.timestamp = previousState.timestamp;
+                updateUI();
+            }
         } finally {
             state.syncing = false;
+            state.pendingWriteCount = Math.max(0, state.pendingWriteCount - 1);
         }
     }
 
     function setSyncSuccess() {
         elements.syncStatusDot.className = "w-4 h-4 rounded-full bg-[var(--neon-green)] shadow-[0_0_8px_rgba(57,255,20,0.5)]";
-        elements.syncStatusText.textContent = "Synced";
+        elements.syncStatusText.textContent = state.isLockedOut ? "Lockout Active (Local Edits)" : "Synced";
         flashValueCards('success');
     }
 
@@ -558,6 +622,161 @@
         elements.syncStatusText.textContent = "Sync Fail: " + message;
         flashValueCards('error');
         showToast("Sync failed: " + message, "error");
+    }
+
+    // --- Hardened Polling Loop and Lockout Handlers ---
+
+    function startPolling() {
+        if (pollingTimeoutId) return;
+        scheduleNextPoll(0);
+    }
+
+    function stopPolling() {
+        if (pollingTimeoutId) {
+            clearTimeout(pollingTimeoutId);
+            pollingTimeoutId = null;
+        }
+        if (lockoutTimeoutId) {
+            clearTimeout(lockoutTimeoutId);
+            lockoutTimeoutId = null;
+        }
+    }
+
+    function scheduleNextPoll(delayMs) {
+        if (pollingTimeoutId) clearTimeout(pollingTimeoutId);
+        pollingTimeoutId = setTimeout(async () => {
+            await pollGoogleSheets();
+            if (pollingTimeoutId !== null) {
+                const nextInterval = calculateNextInterval();
+                scheduleNextPoll(nextInterval);
+            }
+        }, delayMs);
+    }
+
+    function calculateNextInterval() {
+        if (state.pollFailures === 0) return POLL_INTERVAL_MS;
+        const rawDelay = Math.min(POLL_INTERVAL_MS * Math.pow(2, state.pollFailures - 1), 30000);
+        const jitter = (Math.random() - 0.5) * 0.1 * rawDelay;
+        return rawDelay + jitter;
+    }
+
+    async function pollGoogleSheets() {
+        const url = state.config.G_WEB_APP_URL;
+        if (!url || url === 'PASTE_YOUR_URL_HERE') {
+            return;
+        }
+
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS);
+
+        try {
+            let responseData;
+            if (state.isTauri) {
+                const responseStr = await window.__TAURI__.core.invoke("publish_status_get", {
+                    url: url
+                });
+                responseData = JSON.parse(responseStr);
+            } else {
+                // Plain GET call with NO custom headers to avoid preflight blocks
+                const res = await fetch(url, {
+                    method: "GET",
+                    mode: "cors",
+                    credentials: "omit",
+                    signal: controller.signal
+                });
+                if (!res.ok) throw new Error(`HTTP Error: ${res.status}`);
+                responseData = await res.json();
+            }
+
+            clearTimeout(timeoutId);
+            state.pollFailures = 0;
+            state.isOffline = false;
+
+            processPolledState(responseData);
+        } catch (err) {
+            clearTimeout(timeoutId);
+            state.pollFailures++;
+            state.isOffline = true;
+            setSyncError("Poll failed: " + err.message);
+        }
+    }
+
+    function processPolledState(serverState) {
+        const now = Date.now();
+        const timeSinceLastWrite = now - state.lastLocalWriteTimestamp;
+
+        // Discard stale polled updates during in-flight writes
+        if (state.pendingWriteCount > 0) return;
+
+        // Discard stale polled updates during operator lockout window
+        if (timeSinceLastWrite < LOCKOUT_DURATION_MS) {
+            if (Number(serverState.timestamp) <= state.lastLocalWriteTimestamp) {
+                return;
+            }
+        }
+
+        // Discard stale polled updates older than our current logical version
+        if (Number(serverState.timestamp) < state.timestamp) return;
+
+        const serverEvent = parseInt(serverState.event, 10) || 1;
+        const serverHeat = parseInt(serverState.heat, 10) || 1;
+
+        if (state.event !== serverEvent || state.heat !== serverHeat) {
+            if (state.isLockedOut) {
+                // Deferred update: show indicator that remote updates exist
+                elements.syncStatusDot.className = "w-4 h-4 rounded-full bg-yellow-500 shadow-[0_0_8px_rgba(234,179,8,0.5)]";
+                elements.syncStatusText.textContent = `Sync Paused: Update Available (E:${serverEvent} H:${serverHeat})`;
+                return;
+            }
+
+            applyServerState(serverState);
+        } else {
+            setSyncSuccess();
+        }
+    }
+
+    function applyServerState(serverState) {
+        state.event = parseInt(serverState.event, 10) || 1;
+        state.heat = parseInt(serverState.heat, 10) || 1;
+        state.timestamp = Number(serverState.timestamp) || Date.now();
+
+        try {
+            localStorage.setItem('currentEvent', state.event);
+            localStorage.setItem('currentHeat', state.heat);
+        } catch (e) {}
+
+        updateUI();
+    }
+
+    function activateOperatorLockout() {
+        state.isLockedOut = true;
+        elements.syncStatusDot.className = "w-4 h-4 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.5)]";
+        elements.syncStatusText.textContent = "Lockout Active (Local Edits)";
+
+        if (lockoutTimeoutId) clearTimeout(lockoutTimeoutId);
+        lockoutTimeoutId = setTimeout(() => {
+            state.isLockedOut = false;
+            setSyncSuccess();
+            // Immediate catchup poll after releasing lockout
+            pollGoogleSheets();
+        }, LOCKOUT_DURATION_MS);
+    }
+
+    function handleConflict(localPayload, currentServerState, previousState) {
+        const overwrite = confirm(
+            `Conflict Detected!\n\n` +
+            `Another operator has updated the scoreboard to Event ${currentServerState.event}, Heat ${currentServerState.heat}.\n\n` +
+            `Do you want to OVERWRITE their change with your update (Event ${state.event}, Heat ${state.heat})?\n` +
+            `Click OK to Overwrite, or Cancel to accept the server update.`
+        );
+
+        if (overwrite) {
+            // Re-send POST with expectedTimestamp = 0 to bypass checks
+            syncToGoogleSheets(localPayload.timestamp, 0);
+        } else {
+            // Apply the server state
+            applyServerState(currentServerState);
+        }
     }
 
     // Toggle Outdoor High-Contrast Mode
@@ -684,6 +903,12 @@
                 }
             }
         });
+    }
+
+    // Expose test hooks for E2E validation
+    if (typeof window !== 'undefined') {
+        window.pollGoogleSheets = pollGoogleSheets;
+        window.state = state;
     }
 
     // Run on startup
