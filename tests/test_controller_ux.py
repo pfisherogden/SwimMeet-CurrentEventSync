@@ -330,6 +330,7 @@ def test_controller_lockout_and_flicker_mitigation(page: Page):
             route.fulfill(
                 status=200,
                 content_type="application/json",
+                headers={"Access-Control-Allow-Origin": "*"},
                 body=json.dumps({
                     "status": "success",
                     "state": {"event": "2", "heat": "1", "timestamp": int(time.time() * 1000)}
@@ -340,6 +341,7 @@ def test_controller_lockout_and_flicker_mitigation(page: Page):
             route.fulfill(
                 status=200,
                 content_type="application/json",
+                headers={"Access-Control-Allow-Origin": "*"},
                 body=json.dumps({
                     "event": "1",
                     "heat": "1",
@@ -372,6 +374,7 @@ def test_controller_lockout_and_flicker_mitigation(page: Page):
     page.route("https://script.google.com/**", lambda route: route.fulfill(
         status=200,
         content_type="application/json",
+        headers={"Access-Control-Allow-Origin": "*"},
         body=json.dumps({
             "event": "3",
             "heat": "2",
